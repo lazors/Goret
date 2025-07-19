@@ -250,18 +250,50 @@ class Ship {
         
         ctx.save();
         
-        // Draw wake trail with smoother gradient opacity
+        // Draw wider wake trail with ship-like contour
         for (let i = 0; i < this.wakeTrail.length - 1; i++) {
             const point = this.wakeTrail[i];
             const nextPoint = this.wakeTrail[i + 1];
             
-            // More transparent and smoother wake trail
-            ctx.strokeStyle = `rgba(255, 255, 255, ${point.opacity * 0.3})`;
-            ctx.lineWidth = 2 * point.opacity;
+            // Calculate trail width based on distance from ship (wider at back)
+            const distanceFromShip = i / this.wakeTrail.length;
+            const trailWidth = 8 + (distanceFromShip * 12); // 8px at front, 20px at back
+            
+            // More transparent and wider wake trail
+            ctx.strokeStyle = `rgba(255, 255, 255, ${point.opacity * 0.4})`;
+            ctx.lineWidth = trailWidth * point.opacity;
             
             ctx.beginPath();
             ctx.moveTo(point.x, point.y);
             ctx.lineTo(nextPoint.x, nextPoint.y);
+            ctx.stroke();
+        }
+        
+        // Draw ship-like contour at the back (stern area)
+        if (this.wakeTrail.length > 0) {
+            const sternPoint = this.wakeTrail[0]; // Most recent point (closest to ship)
+            
+            // Calculate stern position and angle
+            const sternX = this.x - Math.cos(this.angle - Math.PI/2) * 25;
+            const sternY = this.y - Math.sin(this.angle - Math.PI/2) * 25;
+            
+            // Draw ship stern contour
+            ctx.strokeStyle = `rgba(255, 255, 255, ${sternPoint.opacity * 0.6})`;
+            ctx.lineWidth = 3;
+            
+            // Draw curved stern contour
+            ctx.beginPath();
+            ctx.arc(sternX, sternY, 15, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Draw additional detail lines
+            ctx.strokeStyle = `rgba(255, 255, 255, ${sternPoint.opacity * 0.3})`;
+            ctx.lineWidth = 1;
+            
+            // Draw stern detail lines
+            const detailRadius = 12;
+            ctx.beginPath();
+            ctx.arc(sternX, sternY, detailRadius, 0, Math.PI * 2);
             ctx.stroke();
         }
         
