@@ -27,9 +27,16 @@ class Ship {
         
         // Effects
         this.wakeTrail = []; // ship wake
-        this.maxTrailLength = 20;
+        this.maxTrailLength = 10;
         this.bowWaveTrail = []; // V-shaped bow wave trail
         this.maxBowTrailLength = 15;
+        
+        // V-SHAPE TRAIL SETTINGS - EASILY ADJUSTABLE
+        this.vTrailBaseLength = 10; // Base length of V-trails in pixels
+        this.vTrailLengthGrowth = 5; // How much longer each segment gets
+        this.vTrailSpread = 0.2; // V-shape spread (0.2 = narrow, 0.4 = wide)
+        this.vTrailOpacity = 0.7; // V-trail opacity (0.0 = invisible, 1.0 = opaque)
+        this.vTrailThickness = 2; // V-trail line thickness
         
         // Ship state
         this.isMovingForward = false;
@@ -193,7 +200,7 @@ class Ship {
             
             // Add bow wave trail points from ship MID-SECTION sides
             const shipAngle = this.angle - Math.PI/2;
-            const edgeOffset = this.width / 2; // Distance from ship center to edge
+            const edgeOffset = this.width / 3; // Distance from ship center to edge
             
             // Position trails from ship MID-SECTION (widest point) - SHIFTED UPWARD
             const sideOffset = -this.height / 2; // Negative value = above the ship
@@ -312,35 +319,33 @@ class Ship {
                 const nextPoint = this.bowWaveTrail[i + 1];
                 
                 // Calculate trail length based on distance from ship
-                const trailLength = 100 + (i * 8); // Longer trails further from ship
-                // To adjust trail length:
-                // - Change 100 for base length
-                // - Change 8 for length growth per segment
+                const trailLength = this.vTrailBaseLength + (i * this.vTrailLengthGrowth);
+                // V-TRAIL LENGTH IS NOW CONTROLLED BY:
+                // - this.vTrailBaseLength (base length in pixels)
+                // - this.vTrailLengthGrowth (length increase per segment)
                 
                 // ===== V-TRAIL DIRECTION CALCULATION =====
                 // This controls which direction the V-trails point
                 
                 // Port side wave trail - SIMPLIFIED BACKWARD CALCULATION
-                const portEndX = currentPoint.portX - Math.cos(shipAngle) * trailLength + Math.cos(shipAngle + Math.PI/2) * (trailLength * 0.3);
-                const portEndY = currentPoint.portY - Math.sin(shipAngle) * trailLength + Math.sin(shipAngle + Math.PI/2) * (trailLength * 0.3);
-                // To change direction:
-                // - Remove the minus sign to point forward
-                // - Change 0.3 to adjust V-shape spread (0.2 = narrower, 0.4 = wider)
+                const portEndX = currentPoint.portX - Math.cos(shipAngle) * trailLength + Math.cos(shipAngle + Math.PI/2) * (trailLength * this.vTrailSpread);
+                const portEndY = currentPoint.portY - Math.sin(shipAngle) * trailLength + Math.sin(shipAngle + Math.PI/2) * (trailLength * this.vTrailSpread);
+                // V-TRAIL SPREAD IS NOW CONTROLLED BY: this.vTrailSpread
                 
                 // Starboard side wave trail - SIMPLIFIED BACKWARD CALCULATION
-                const starboardEndX = currentPoint.starboardX - Math.cos(shipAngle) * trailLength - Math.cos(shipAngle + Math.PI/2) * (trailLength * 0.3);
-                const starboardEndY = currentPoint.starboardY - Math.sin(shipAngle) * trailLength - Math.sin(shipAngle + Math.PI/2) * (trailLength * 0.3);
+                const starboardEndX = currentPoint.starboardX - Math.cos(shipAngle) * trailLength - Math.cos(shipAngle + Math.PI/2) * (trailLength * this.vTrailSpread);
+                const starboardEndY = currentPoint.starboardY - Math.sin(shipAngle) * trailLength - Math.sin(shipAngle + Math.PI/2) * (trailLength * this.vTrailSpread);
                 // Note the minus sign before Math.cos(shipAngle + Math.PI/2) - this creates the V-shape
                 
                 // ===== V-TRAIL VISUAL PROPERTIES =====
                 // This controls the appearance of the V-trails
                 
                 // Draw the wave trails with fading opacity
-                ctx.strokeStyle = `rgba(255, 255, 255, ${currentPoint.opacity * 0.7})`;
-                ctx.lineWidth = 4 * currentPoint.opacity;
-                // To adjust appearance:
-                // - Change 0.7 for opacity (0.0 = invisible, 1.0 = fully opaque)
-                // - Change 4 for line thickness
+                ctx.strokeStyle = `rgba(255, 255, 255, ${currentPoint.opacity * this.vTrailOpacity})`;
+                ctx.lineWidth = this.vTrailThickness * currentPoint.opacity;
+                // V-TRAIL APPEARANCE IS NOW CONTROLLED BY:
+                // - this.vTrailOpacity (0.0 = invisible, 1.0 = fully opaque)
+                // - this.vTrailThickness (line thickness in pixels)
                 
                 // Port trail
                 ctx.beginPath();
