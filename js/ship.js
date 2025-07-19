@@ -28,6 +28,8 @@ class Ship {
         // Effects
         this.wakeTrail = []; // ship wake
         this.maxTrailLength = 20;
+        this.bowWaveTrail = []; // V-shaped bow wave trail
+        this.maxBowTrailLength = 15;
         
         // Ship state
         this.isMovingForward = false;
@@ -185,6 +187,38 @@ class Ship {
                 age: 0,
                 opacity: 1.0
             });
+            
+            // ===== V-SHAPED TRAIL POSITIONING CODE =====
+            // This section controls WHERE the V-trails originate from on the ship
+            
+            // Add bow wave trail points from ship MID-SECTION sides
+            const shipAngle = this.angle - Math.PI/2;
+            const edgeOffset = this.width / 2; // Distance from ship center to edge
+            
+            // Position trails from ship MID-SECTION (widest point) - SHIFTED UPWARD
+            const sideOffset = -this.height / 2; // Negative value = above the ship
+            // To adjust V-trail position: 
+            // - Use 0 for center of ship
+            // - Use positive values to move trails forward
+            // - Use negative values to move trails backward
+            
+            // Port side (left edge) - positioned at ship's mid-section, shifted up
+            const portX = this.x + Math.cos(shipAngle + Math.PI/2) * edgeOffset + Math.cos(shipAngle) * sideOffset;
+            const portY = this.y + Math.sin(shipAngle + Math.PI/2) * edgeOffset + Math.sin(shipAngle) * sideOffset;
+            
+            // Starboard side (right edge) - positioned at ship's mid-section, shifted up
+            const starboardX = this.x + Math.cos(shipAngle - Math.PI/2) * edgeOffset + Math.cos(shipAngle) * sideOffset;
+            const starboardY = this.y + Math.sin(shipAngle - Math.PI/2) * edgeOffset + Math.sin(shipAngle) * sideOffset;
+            
+            // Add bow wave trail points
+            this.bowWaveTrail.push({
+                portX: portX,
+                portY: portY,
+                starboardX: starboardX,
+                starboardY: starboardY,
+                age: 0,
+                opacity: 1.0
+            });
         }
         
         // Update and remove old wake points
@@ -194,9 +228,21 @@ class Ship {
             return point.age < 3;
         });
         
+        // Update and remove old bow wave trail points
+        this.bowWaveTrail = this.bowWaveTrail.filter(point => {
+            point.age += 0.016; // approximate deltaTime
+            point.opacity = Math.max(0, 1.0 - (point.age / 2)); // fade over 2 seconds
+            return point.age < 2;
+        });
+        
         // Limit wake length
         if (this.wakeTrail.length > this.maxTrailLength) {
             this.wakeTrail = this.wakeTrail.slice(-this.maxTrailLength);
+        }
+        
+        // Limit bow wave trail length
+        if (this.bowWaveTrail.length > this.maxBowTrailLength) {
+            this.bowWaveTrail = this.bowWaveTrail.slice(-this.maxBowTrailLength);
         }
     }
     
@@ -246,55 +292,89 @@ class Ship {
     }
     
     drawWakeTrail(ctx) {
-        if (this.wakeTrail.length < 2) return;
-        
         ctx.save();
         
-        // Draw wider wake trail with ship-like contour
-        for (let i = 0; i < this.wakeTrail.length - 1; i++) {
-            const point = this.wakeTrail[i];
-            const nextPoint = this.wakeTrail[i + 1];
+        // ===== V-SHAPED TRAIL DRAWING CODE =====
+        // This section controls HOW the V-trails are drawn and their appearance
+        
+        // Draw V-shaped bow wave trail
+        if (this.bowWaveTrail.length > 0) {
+            const shipAngle = this.angle - Math.PI/2;
+            const spreadAngle = Math.PI / 6; // 30 degrees spread for more visible V
+            // To adjust V-shape angle: change this value
+            // - Math.PI / 8 = 22.5 degrees (narrower V)
+            // - Math.PI / 6 = 30 degrees (current)
+            // - Math.PI / 4 = 45 degrees (wider V)
             
-            // Calculate trail width based on distance from ship (wider at back)
-            const distanceFromShip = i / this.wakeTrail.length;
-            const trailWidth = 8 + (distanceFromShip * 12); // 8px at front, 20px at back
-            
-            // More transparent and wider wake trail
-            ctx.strokeStyle = `rgba(255, 255, 255, ${point.opacity * 0.4})`;
-            ctx.lineWidth = trailWidth * point.opacity;
-            
-            ctx.beginPath();
-            ctx.moveTo(point.x, point.y);
-            ctx.lineTo(nextPoint.x, nextPoint.y);
-            ctx.stroke();
+            // Draw each segment of the bow wave trail
+            for (let i = 0; i < this.bowWaveTrail.length - 1; i++) {
+                const currentPoint = this.bowWaveTrail[i];
+                const nextPoint = this.bowWaveTrail[i + 1];
+                
+                // Calculate trail length based on distance from ship
+                const trailLength = 100 + (i * 8); // Longer trails further from ship
+                // To adjust trail length:
+                // - Change 100 for base length
+                // - Change 8 for length growth per segment
+                
+                // ===== V-TRAIL DIRECTION CALCULATION =====
+                // This controls which direction the V-trails point
+                
+                // Port side wave trail - SIMPLIFIED BACKWARD CALCULATION
+                const portEndX = currentPoint.portX - Math.cos(shipAngle) * trailLength + Math.cos(shipAngle + Math.PI/2) * (trailLength * 0.3);
+                const portEndY = currentPoint.portY - Math.sin(shipAngle) * trailLength + Math.sin(shipAngle + Math.PI/2) * (trailLength * 0.3);
+                // To change direction:
+                // - Remove the minus sign to point forward
+                // - Change 0.3 to adjust V-shape spread (0.2 = narrower, 0.4 = wider)
+                
+                // Starboard side wave trail - SIMPLIFIED BACKWARD CALCULATION
+                const starboardEndX = currentPoint.starboardX - Math.cos(shipAngle) * trailLength - Math.cos(shipAngle + Math.PI/2) * (trailLength * 0.3);
+                const starboardEndY = currentPoint.starboardY - Math.sin(shipAngle) * trailLength - Math.sin(shipAngle + Math.PI/2) * (trailLength * 0.3);
+                // Note the minus sign before Math.cos(shipAngle + Math.PI/2) - this creates the V-shape
+                
+                // ===== V-TRAIL VISUAL PROPERTIES =====
+                // This controls the appearance of the V-trails
+                
+                // Draw the wave trails with fading opacity
+                ctx.strokeStyle = `rgba(255, 255, 255, ${currentPoint.opacity * 0.7})`;
+                ctx.lineWidth = 4 * currentPoint.opacity;
+                // To adjust appearance:
+                // - Change 0.7 for opacity (0.0 = invisible, 1.0 = fully opaque)
+                // - Change 4 for line thickness
+                
+                // Port trail
+                ctx.beginPath();
+                ctx.moveTo(currentPoint.portX, currentPoint.portY);
+                ctx.lineTo(portEndX, portEndY);
+                ctx.stroke();
+                
+                // Starboard trail
+                ctx.beginPath();
+                ctx.moveTo(currentPoint.starboardX, currentPoint.starboardY);
+                ctx.lineTo(starboardEndX, starboardEndY);
+                ctx.stroke();
+            }
         }
         
-        // Draw ship-like contour at the back (stern area)
-        if (this.wakeTrail.length > 0) {
-            const sternPoint = this.wakeTrail[0]; // Most recent point (closest to ship)
-            
-            // Calculate stern position and angle
-            const sternX = this.x - Math.cos(this.angle - Math.PI/2) * 25;
-            const sternY = this.y - Math.sin(this.angle - Math.PI/2) * 25;
-            
-            // Draw ship stern contour
-            ctx.strokeStyle = `rgba(255, 255, 255, ${sternPoint.opacity * 0.6})`;
-            ctx.lineWidth = 3;
-            
-            // Draw curved stern contour
-            ctx.beginPath();
-            ctx.arc(sternX, sternY, 15, 0, Math.PI * 2);
-            ctx.stroke();
-            
-            // Draw additional detail lines
-            ctx.strokeStyle = `rgba(255, 255, 255, ${sternPoint.opacity * 0.3})`;
-            ctx.lineWidth = 1;
-            
-            // Draw stern detail lines
-            const detailRadius = 12;
-            ctx.beginPath();
-            ctx.arc(sternX, sternY, detailRadius, 0, Math.PI * 2);
-            ctx.stroke();
+        // Draw the main wake trail behind the ship
+        if (this.wakeTrail.length >= 2) {
+            for (let i = 0; i < this.wakeTrail.length - 1; i++) {
+                const point = this.wakeTrail[i];
+                const nextPoint = this.wakeTrail[i + 1];
+                
+                // Calculate trail width based on distance from ship (wider at back)
+                const distanceFromShip = i / this.wakeTrail.length;
+                const trailWidth = 8 + (distanceFromShip * 12); // 8px at front, 20px at back
+                
+                // More transparent and wider wake trail
+                ctx.strokeStyle = `rgba(255, 255, 255, ${point.opacity * 0.4})`;
+                ctx.lineWidth = trailWidth * point.opacity;
+                
+                ctx.beginPath();
+                ctx.moveTo(point.x, point.y);
+                ctx.lineTo(nextPoint.x, nextPoint.y);
+                ctx.stroke();
+            }
         }
         
         ctx.restore();
