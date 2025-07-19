@@ -35,7 +35,7 @@ class Ship {
         this.vTrailBaseLength = 10; // Base length of V-trails in pixels
         this.vTrailLengthGrowth = 5; // How much longer each segment gets
         this.vTrailSpread = 0.2; // V-shape spread (0.2 = narrow, 0.4 = wide)
-        this.vTrailOpacity = 0.7; // V-trail opacity (0.0 = invisible, 1.0 = opaque)
+        this.vTrailOpacity = 0.4; // V-trail opacity (0.0 = invisible, 1.0 = opaque)
         this.vTrailThickness = 2; // V-trail line thickness
         
         // Ship state
