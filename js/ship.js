@@ -21,9 +21,9 @@ class Ship {
         
         // Visualization
         this.sprite = sprite;
-        this.width = 64;
-        this.height = 64;
-        this.radius = 30; // for collisions
+        this.width = 60;
+        this.height = 40;
+        this.radius = 35; // for collisions
         
         // Effects
         this.wakeTrail = []; // ship wake
@@ -133,6 +133,7 @@ class Ship {
     
     updatePosition(deltaTime) {
         // Calculate new position based on angle and speed
+        // Adjust for ship image orientation (bow points right in image, but we want it to point up)
         const deltaX = Math.cos(this.angle - Math.PI/2) * this.currentSpeed * deltaTime;
         const deltaY = Math.sin(this.angle - Math.PI/2) * this.currentSpeed * deltaTime;
         
@@ -174,7 +175,7 @@ class Ship {
     updateWakeTrail() {
         // Add new wake point if ship is moving
         if (Math.abs(this.currentSpeed) > 10) {
-            // Calculate ship stern position
+            // Calculate ship stern position (back of ship)
             const sternX = this.x - Math.cos(this.angle - Math.PI/2) * 25;
             const sternY = this.y - Math.sin(this.angle - Math.PI/2) * 25;
             
@@ -210,7 +211,8 @@ class Ship {
         ctx.translate(this.x, this.y);
         
         // Rotate to current angle
-        ctx.rotate(this.angle);
+        // Adjust rotation to account for ship image orientation (bow points right in image)
+        ctx.rotate(this.angle - Math.PI/2);
         
         // Draw ship relative to center
         if (this.sprite) {
@@ -248,13 +250,14 @@ class Ship {
         
         ctx.save();
         
-        // Draw wake trail with gradient opacity
+        // Draw wake trail with smoother gradient opacity
         for (let i = 0; i < this.wakeTrail.length - 1; i++) {
             const point = this.wakeTrail[i];
             const nextPoint = this.wakeTrail[i + 1];
             
-            ctx.strokeStyle = `rgba(255, 255, 255, ${point.opacity * 0.6})`;
-            ctx.lineWidth = 3 * point.opacity;
+            // More transparent and smoother wake trail
+            ctx.strokeStyle = `rgba(255, 255, 255, ${point.opacity * 0.3})`;
+            ctx.lineWidth = 2 * point.opacity;
             
             ctx.beginPath();
             ctx.moveTo(point.x, point.y);
@@ -266,28 +269,7 @@ class Ship {
     }
     
     drawSpeedEffects(ctx) {
-        // Water splashes at high speed
-        if (Math.abs(this.currentSpeed) > 150) {
-            ctx.save();
-            
-            // Calculate splash position (ship bow)
-            const bowX = this.x + Math.cos(this.angle - Math.PI/2) * 30;
-            const bowY = this.y + Math.sin(this.angle - Math.PI/2) * 30;
-            
-            // Draw splash particles
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            for (let i = 0; i < 5; i++) {
-                const offsetX = (Math.random() - 0.5) * 20;
-                const offsetY = (Math.random() - 0.5) * 20;
-                const size = Math.random() * 4 + 2;
-                
-                ctx.beginPath();
-                ctx.arc(bowX + offsetX, bowY + offsetY, size, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            
-            ctx.restore();
-        }
+        // Removed splash animation at ship bow for cleaner look
     }
     
     getInfo() {

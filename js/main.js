@@ -101,9 +101,8 @@ class Game {
         
         // List of resources to load
         const assetList = [
-            // Temporarily use placeholders instead of real images
             { key: 'map', type: 'placeholder', width: 1024, height: 768, color: '#1e3a5f' },
-            { key: 'ship', type: 'placeholder', width: 64, height: 64, color: '#8b4513' },
+            { key: 'ship', type: 'image', src: 'ship-4741839_960_720.webp' },
             { key: 'wave', type: 'placeholder', width: 128, height: 128, color: '#2980b9' }
         ];
         
@@ -120,6 +119,30 @@ class Game {
         return new Promise((resolve) => {
             this.updateLoadingText(`Loading ${assetInfo.key}...`);
             
+            if (assetInfo.type === 'image') {
+                // Load actual image
+                const img = new Image();
+                img.onload = () => {
+                    this.assets[assetInfo.key] = img;
+                    this.loadedAssets++;
+                    this.updateLoadingProgress();
+                    setTimeout(() => resolve(), 200);
+                };
+                img.onerror = () => {
+                    console.error(`Failed to load image: ${assetInfo.src}`);
+                    // Fallback to placeholder
+                    this.createPlaceholder(assetInfo).then(resolve);
+                };
+                img.src = assetInfo.src;
+            } else {
+                // Create placeholder
+                this.createPlaceholder(assetInfo).then(resolve);
+            }
+        });
+    }
+    
+    async createPlaceholder(assetInfo) {
+        return new Promise((resolve) => {
             // Create placeholder for image
             const canvas = document.createElement('canvas');
             canvas.width = assetInfo.width;
