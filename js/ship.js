@@ -38,6 +38,11 @@ class Ship {
         this.vTrailOpacity = 0.4; // V-trail opacity (0.0 = invisible, 1.0 = opaque)
         this.vTrailThickness = 2; // V-trail line thickness
         
+        // SMOOTH TURNING SETTINGS
+        this.trailSmoothingFactor = 0.15; // How quickly trails adapt to new angles (0.1 = slow, 0.3 = fast)
+        this.maxTrailAngleChange = Math.PI / 4; // Maximum angle change per frame (prevents snapping)
+        this.previousShipAngle = this.angle - Math.PI/2; // Track previous angle for smoothing
+        
         // Ship state
         this.isMovingForward = false;
         this.isMovingBackward = false;
@@ -195,11 +200,30 @@ class Ship {
                 opacity: 1.0
             });
             
-            // ===== V-SHAPED TRAIL POSITIONING CODE =====
+            // ===== SMOOTH V-SHAPED TRAIL POSITIONING CODE =====
             // This section controls WHERE the V-trails originate from on the ship
             
+            // SMOOTH ANGLE INTERPOLATION FOR TURNS
+            const currentShipAngle = this.angle - Math.PI/2;
+            
+            // Calculate angle difference for smooth interpolation
+            let angleDiff = currentShipAngle - this.previousShipAngle;
+            
+            // Handle angle wrapping (when crossing 0/2π boundary)
+            if (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+            if (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+            
+            // Limit maximum angle change per frame to prevent snapping
+            if (Math.abs(angleDiff) > this.maxTrailAngleChange) {
+                angleDiff = Math.sign(angleDiff) * this.maxTrailAngleChange;
+            }
+            
+            // Smoothly interpolate the angle
+            const smoothedAngle = this.previousShipAngle + (angleDiff * this.trailSmoothingFactor);
+            this.previousShipAngle = smoothedAngle;
+            
             // Add bow wave trail points from ship MID-SECTION sides
-            const shipAngle = this.angle - Math.PI/2;
+            const shipAngle = smoothedAngle; // Use smoothed angle for trail positioning
             const edgeOffset = this.width / 3; // Distance from ship center to edge
             
             // Position trails from ship MID-SECTION (widest point) - SHIFTED UPWARD
@@ -217,14 +241,15 @@ class Ship {
             const starboardX = this.x + Math.cos(shipAngle - Math.PI/2) * edgeOffset + Math.cos(shipAngle) * sideOffset;
             const starboardY = this.y + Math.sin(shipAngle - Math.PI/2) * edgeOffset + Math.sin(shipAngle) * sideOffset;
             
-            // Add bow wave trail points
+            // Add bow wave trail points with smoothed angle
             this.bowWaveTrail.push({
                 portX: portX,
                 portY: portY,
                 starboardX: starboardX,
                 starboardY: starboardY,
                 age: 0,
-                opacity: 1.0
+                opacity: 1.0,
+                shipAngle: smoothedAngle // Store the smoothed angle for drawing
             });
         }
         
@@ -301,12 +326,11 @@ class Ship {
     drawWakeTrail(ctx) {
         ctx.save();
         
-        // ===== V-SHAPED TRAIL DRAWING CODE =====
+        // ===== SMOOTH V-SHAPED TRAIL DRAWING CODE =====
         // This section controls HOW the V-trails are drawn and their appearance
         
         // Draw V-shaped bow wave trail
         if (this.bowWaveTrail.length > 0) {
-            const shipAngle = this.angle - Math.PI/2;
             const spreadAngle = Math.PI / 6; // 30 degrees spread for more visible V
             // To adjust V-shape angle: change this value
             // - Math.PI / 8 = 22.5 degrees (narrower V)
@@ -317,6 +341,9 @@ class Ship {
             for (let i = 0; i < this.bowWaveTrail.length - 1; i++) {
                 const currentPoint = this.bowWaveTrail[i];
                 const nextPoint = this.bowWaveTrail[i + 1];
+                
+                // Use the stored smoothed angle for this trail segment
+                const shipAngle = currentPoint.shipAngle || (this.angle - Math.PI/2);
                 
                 // Calculate trail length based on distance from ship
                 const trailLength = this.vTrailBaseLength + (i * this.vTrailLengthGrowth);
