@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pirate Adventure - Ship Control</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1> Goret adventure </h1>
+            <div class="controls-info">
+                <p>Controls: Arrows or WASD | Esc - pause</p>
+            </div>
+        </div>
+        
+        <div class="game-area">
+            <canvas id="gameCanvas" width="1024" height="768"></canvas>
+            <div class="hud">
+                <div class="speed-indicator">
+                    <span>Speed: </span>
+                    <span id="speedValue">0</span>
+                </div>
+                <div class="direction-indicator">
+                    <span>Direction: </span>
+                    <span id="directionValue">N</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="loading-screen" id="loadingScreen">
+            <div class="loading-content">
+                <h2>⚓ Loading...</h2>
+                <div class="loading-bar">
+                    <div class="loading-progress" id="loadingProgress"></div>
+                </div>
+                <p id="loadingText">Preparing map...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/map.js"></script>
+    <script src="js/ship.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html> 

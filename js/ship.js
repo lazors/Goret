@@ -1,0 +1,342 @@
+/**
+ * Pirate Game - Ship Class
+ * Movement control, inertia, turns and collisions
+ */
+
+class Ship {
+    constructor(x, y, sprite) {
+        // Position
+        this.x = x;
+        this.y = y;
+        this.prevX = x;
+        this.prevY = y;
+        
+        // Movement physics
+        this.angle = 0; // angle in radians
+        this.currentSpeed = 0;
+        this.maxSpeed = 200; // pixels per second
+        this.acceleration = 150; // acceleration
+        this.deceleration = 100; // deceleration
+        this.turnSpeed = 3; // turn speed (radians per second)
+        
+        // Visualization
+        this.sprite = sprite;
+        this.width = 64;
+        this.height = 64;
+        this.radius = 30; // for collisions
+        
+        // Effects
+        this.wakeTrail = []; // ship wake
+        this.maxTrailLength = 20;
+        
+        // Ship state
+        this.isMovingForward = false;
+        this.isMovingBackward = false;
+        this.isTurningLeft = false;
+        this.isTurningRight = false;
+        
+        console.log('🚢 Ship created at position:', x, y);
+    }
+    
+    update(deltaTime, keys, map) {
+        // Save previous position
+        this.prevX = this.x;
+        this.prevY = this.y;
+        
+        // Input processing
+        this.handleInput(keys);
+        
+        // Update rotation angle
+        this.updateRotation(deltaTime);
+        
+        // Update speed
+        this.updateSpeed(deltaTime);
+        
+        // Update position
+        this.updatePosition(deltaTime);
+        
+        // Check map collisions
+        this.handleMapConstraints(map);
+        
+        // Update wake trail
+        this.updateWakeTrail();
+    }
+    
+    handleInput(keys) {
+        // Reset state
+        this.isMovingForward = false;
+        this.isMovingBackward = false;
+        this.isTurningLeft = false;
+        this.isTurningRight = false;
+        
+        // Process forward/backward movement
+        if (keys['ArrowUp'] || keys['KeyW']) {
+            this.isMovingForward = true;
+        }
+        if (keys['ArrowDown'] || keys['KeyS']) {
+            this.isMovingBackward = true;
+        }
+        
+        // Process turns
+        if (keys['ArrowLeft'] || keys['KeyA']) {
+            this.isTurningLeft = true;
+        }
+        if (keys['ArrowRight'] || keys['KeyD']) {
+            this.isTurningRight = true;
+        }
+    }
+    
+    updateRotation(deltaTime) {
+        if (this.isTurningLeft) {
+            this.angle -= this.turnSpeed * deltaTime;
+        }
+        if (this.isTurningRight) {
+            this.angle += this.turnSpeed * deltaTime;
+        }
+        
+        // Normalize angle
+        if (this.angle < 0) this.angle += Math.PI * 2;
+        if (this.angle >= Math.PI * 2) this.angle -= Math.PI * 2;
+    }
+    
+    updateSpeed(deltaTime) {
+        let targetSpeed = 0;
+        
+        if (this.isMovingForward) {
+            targetSpeed = this.maxSpeed;
+        } else if (this.isMovingBackward) {
+            targetSpeed = -this.maxSpeed * 0.5; // slower backward
+        }
+        
+        // Smooth speed change (inertia)
+        if (targetSpeed > this.currentSpeed) {
+            this.currentSpeed += this.acceleration * deltaTime;
+            if (this.currentSpeed > targetSpeed) {
+                this.currentSpeed = targetSpeed;
+            }
+        } else if (targetSpeed < this.currentSpeed) {
+            this.currentSpeed -= this.deceleration * deltaTime;
+            if (this.currentSpeed < targetSpeed) {
+                this.currentSpeed = targetSpeed;
+            }
+        } else {
+            // Natural deceleration
+            if (this.currentSpeed > 0) {
+                this.currentSpeed -= this.deceleration * deltaTime;
+                if (this.currentSpeed < 0) this.currentSpeed = 0;
+            } else if (this.currentSpeed < 0) {
+                this.currentSpeed += this.deceleration * deltaTime;
+                if (this.currentSpeed > 0) this.currentSpeed = 0;
+            }
+        }
+    }
+    
+    updatePosition(deltaTime) {
+        // Calculate new position based on angle and speed
+        const deltaX = Math.cos(this.angle - Math.PI/2) * this.currentSpeed * deltaTime;
+        const deltaY = Math.sin(this.angle - Math.PI/2) * this.currentSpeed * deltaTime;
+        
+        this.x += deltaX;
+        this.y += deltaY;
+    }
+    
+    handleMapConstraints(map) {
+        if (!map) return;
+        
+        // Check map boundaries
+        const constrainedPos = map.getConstrainedPosition(this.x, this.y, this.radius);
+        
+        if (constrainedPos.x !== this.x || constrainedPos.y !== this.y) {
+            // Ship reached map edge
+            this.x = constrainedPos.x;
+            this.y = constrainedPos.y;
+            this.currentSpeed *= 0.5; // reduce speed on edge collision
+        }
+        
+        // Check island collisions
+        const islandCollision = map.checkIslandCollision(this.x, this.y, this.radius);
+        if (islandCollision.collision) {
+            // Push away from island
+            const pushForce = 50;
+            this.x += islandCollision.pushX * pushForce * 0.016; // 0.016 ≈ deltaTime
+            this.y += islandCollision.pushY * pushForce * 0.016;
+            
+            // Reduce speed on collision
+            this.currentSpeed *= 0.3;
+            
+            // Constrain position within map after push
+            const newConstrainedPos = map.getConstrainedPosition(this.x, this.y, this.radius);
+            this.x = newConstrainedPos.x;
+            this.y = newConstrainedPos.y;
+        }
+    }
+    
+    updateWakeTrail() {
+        // Add new wake point if ship is moving
+        if (Math.abs(this.currentSpeed) > 10) {
+            // Calculate ship stern position
+            const sternX = this.x - Math.cos(this.angle - Math.PI/2) * 25;
+            const sternY = this.y - Math.sin(this.angle - Math.PI/2) * 25;
+            
+            this.wakeTrail.push({
+                x: sternX,
+                y: sternY,
+                age: 0,
+                opacity: 1.0
+            });
+        }
+        
+        // Update and remove old wake points
+        this.wakeTrail = this.wakeTrail.filter(point => {
+            point.age += 0.016; // approximate deltaTime
+            point.opacity = Math.max(0, 1.0 - (point.age / 3)); // fade over 3 seconds
+            return point.age < 3;
+        });
+        
+        // Limit wake length
+        if (this.wakeTrail.length > this.maxTrailLength) {
+            this.wakeTrail = this.wakeTrail.slice(-this.maxTrailLength);
+        }
+    }
+    
+    draw(ctx) {
+        // Draw wake trail
+        this.drawWakeTrail(ctx);
+        
+        // Save context state
+        ctx.save();
+        
+        // Move to ship center
+        ctx.translate(this.x, this.y);
+        
+        // Rotate to current angle
+        ctx.rotate(this.angle);
+        
+        // Draw ship relative to center
+        if (this.sprite) {
+            ctx.drawImage(
+                this.sprite,
+                -this.width / 2,
+                -this.height / 2,
+                this.width,
+                this.height
+            );
+        } else {
+            // Fallback - simple triangle
+            ctx.fillStyle = '#8b4513';
+            ctx.beginPath();
+            ctx.moveTo(0, -25); // bow
+            ctx.lineTo(-15, 20); // port side
+            ctx.lineTo(15, 20); // starboard side
+            ctx.closePath();
+            ctx.fill();
+            
+            // Sails
+            ctx.fillStyle = '#f5f5dc';
+            ctx.fillRect(-12, -10, 24, 20);
+        }
+        
+        // Restore context state
+        ctx.restore();
+        
+        // Draw additional effects
+        this.drawSpeedEffects(ctx);
+    }
+    
+    drawWakeTrail(ctx) {
+        if (this.wakeTrail.length < 2) return;
+        
+        ctx.save();
+        
+        // Draw wake trail with gradient opacity
+        for (let i = 0; i < this.wakeTrail.length - 1; i++) {
+            const point = this.wakeTrail[i];
+            const nextPoint = this.wakeTrail[i + 1];
+            
+            ctx.strokeStyle = `rgba(255, 255, 255, ${point.opacity * 0.6})`;
+            ctx.lineWidth = 3 * point.opacity;
+            
+            ctx.beginPath();
+            ctx.moveTo(point.x, point.y);
+            ctx.lineTo(nextPoint.x, nextPoint.y);
+            ctx.stroke();
+        }
+        
+        ctx.restore();
+    }
+    
+    drawSpeedEffects(ctx) {
+        // Water splashes at high speed
+        if (Math.abs(this.currentSpeed) > 150) {
+            ctx.save();
+            
+            // Calculate splash position (ship bow)
+            const bowX = this.x + Math.cos(this.angle - Math.PI/2) * 30;
+            const bowY = this.y + Math.sin(this.angle - Math.PI/2) * 30;
+            
+            // Draw splash particles
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            for (let i = 0; i < 5; i++) {
+                const offsetX = (Math.random() - 0.5) * 20;
+                const offsetY = (Math.random() - 0.5) * 20;
+                const size = Math.random() * 4 + 2;
+                
+                ctx.beginPath();
+                ctx.arc(bowX + offsetX, bowY + offsetY, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            ctx.restore();
+        }
+    }
+    
+    getInfo() {
+        return {
+            x: Math.round(this.x),
+            y: Math.round(this.y),
+            angle: Math.round(this.angle * 180 / Math.PI),
+            speed: Math.round(this.currentSpeed),
+            direction: this.getDirectionString()
+        };
+    }
+    
+    setPosition(x, y) {
+        this.x = x;
+        this.y = y;
+        this.prevX = x;
+        this.prevY = y;
+    }
+    
+    setAngle(angle) {
+        this.angle = angle;
+    }
+    
+    drawDebugInfo(ctx) {
+        // Draw collision radius
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Draw movement direction
+        if (Math.abs(this.currentSpeed) > 5) {
+            ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+            ctx.lineWidth = 3;
+            const endX = this.x + Math.cos(this.angle - Math.PI/2) * 50;
+            const endY = this.y + Math.sin(this.angle - Math.PI/2) * 50;
+            
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+        }
+    }
+    
+    getDirectionString() {
+        const angle = this.angle * 180 / Math.PI;
+        const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+        const index = Math.round(angle / 45) % 8;
+        return directions[index < 0 ? index + 8 : index];
+    }
+} 
