@@ -65,11 +65,68 @@ Goret/
 
 ## 🚀 Running the Game
 
-1. **Download the project**
-2. **Open `index.html`** in a modern browser
-3. **Enjoy the game!**
+### 🖥️ Windows Launch Instructions
 
-> **Note**: The game uses Canvas API and ES6+, so a modern browser is required (Chrome, Firefox, Safari, Edge).
+#### Method 1: Local HTTP Server (Recommended)
+
+For the best experience and to avoid CORS issues:
+
+1. **Install Node.js** (if not already installed):
+
+   - Download from [nodejs.org](https://nodejs.org/)
+   - Choose LTS version for Windows
+
+2. **Open PowerShell or Command Prompt**:
+
+   - Press `Win + R`, type `powershell`, press Enter
+   - Or search for "PowerShell" in Start menu
+
+3. **Navigate to the game folder**:
+
+   ```powershell
+   cd C:\path\to\your\goret\folder
+   ```
+
+4. **Install and run HTTP server**:
+
+   ```powershell
+   npx http-server -p 8000 --cors
+   ```
+
+5. **Open your browser** and go to:
+   - `http://localhost:8000` or `http://127.0.0.1:8000`
+
+#### Method 2: Direct File Opening (Simple)
+
+For quick testing (may have limitations):
+
+1. **Navigate to the project folder** in Windows Explorer
+2. **Right-click on `index.html`**
+3. **Select "Open with"** → Choose your preferred browser
+4. **Enjoy the game!**
+
+#### Method 3: Python Server (Alternative)
+
+If you have Python installed:
+
+```powershell
+# For Python 3.x
+python -m http.server 8000
+
+# For Python 2.x
+python -m SimpleHTTPServer 8000
+```
+
+Then open `http://localhost:8000` in your browser.
+
+### 🌐 Browser Compatibility
+
+- **Chrome** (Recommended)
+- **Firefox**
+- **Microsoft Edge**
+- **Safari** (if available)
+
+> **Note**: The game uses Canvas API and ES6+, so a modern browser is required. For best performance, use the HTTP server method to avoid potential file loading issues.
 
 ## 🛠️ Developer Mode
 

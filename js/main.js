@@ -196,8 +196,8 @@ class Game {
                 // Load actual image
                 const img = new Image();
                 
-                // Set crossOrigin to allow canvas analysis
-                img.crossOrigin = 'anonymous';
+                // Don't set crossOrigin for local files to avoid CORS issues
+                // img.crossOrigin = 'anonymous';
                 
                 img.onload = () => {
                     console.log(`✅ Successfully loaded image: ${assetInfo.key}`);
