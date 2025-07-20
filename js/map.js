@@ -207,8 +207,14 @@ class GameMap {
     }
     
     drawIslandsOverlay(ctx) {
-        // Enhanced island rendering with realistic water interaction
+        // Enhanced island rendering with realistic seashores and depth transitions
         this.islands.forEach(island => {
+            // Draw depth transitions (lighter water near islands)
+            this.drawIslandDepthTransition(ctx, island);
+            
+            // Draw sandy seashore
+            this.drawIslandSeashore(ctx, island);
+            
             // Island shadow in water
             ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
             ctx.beginPath();
@@ -232,30 +238,52 @@ class GameMap {
         });
     }
     
+    drawIslandDepthTransition(ctx, island) {
+        // Create smooth depth transition using continuous gradient
+        const maxDepthDistance = 180; // Distance where depth effect fades
+        
+        // Create a single smooth gradient for depth transition
+        const depthGradient = ctx.createRadialGradient(
+            island.x, island.y, island.radius,
+            island.x, island.y, island.radius + maxDepthDistance
+        );
+        
+        // Smooth color transition from turquoise to deep blue
+        depthGradient.addColorStop(0, 'rgba(64, 200, 220, 0.12)'); // Light turquoise
+        depthGradient.addColorStop(0.3, 'rgba(74, 190, 210, 0.08)'); // Medium turquoise
+        depthGradient.addColorStop(0.6, 'rgba(84, 180, 200, 0.05)'); // Dark turquoise
+        depthGradient.addColorStop(0.8, 'rgba(89, 170, 190, 0.03)'); // Very dark turquoise
+        depthGradient.addColorStop(1, 'rgba(94, 160, 160, 0.01)'); // Deep blue (almost transparent)
+        
+        ctx.fillStyle = depthGradient;
+        ctx.beginPath();
+        ctx.arc(island.x, island.y, island.radius + maxDepthDistance, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    drawIslandSeashore(ctx, island) {
+        // Draw static sandy seashore around islands (no movable texture)
+        const shoreWidth = 18; // Width of sandy shore
+        
+        // Sandy shore gradient (static, no texture lines)
+        const shoreGradient = ctx.createRadialGradient(
+            island.x, island.y, island.radius,
+            island.x, island.y, island.radius + shoreWidth
+        );
+        shoreGradient.addColorStop(0, 'rgba(238, 203, 173, 0.7)'); // Sand color
+        shoreGradient.addColorStop(0.6, 'rgba(238, 203, 173, 0.3)'); // Fading sand
+        shoreGradient.addColorStop(1, 'rgba(238, 203, 173, 0.0)'); // Transparent
+        
+        ctx.fillStyle = shoreGradient;
+        ctx.beginPath();
+        ctx.arc(island.x, island.y, island.radius + shoreWidth, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
     drawRealisticIslandWakes(ctx, island) {
-        const time = this.waveTime;
-        
-        // Multiple wake rings with different properties
-        const wakeRings = [
-            { radius: 15, speed: 0.5, opacity: 0.3, thickness: 2 },
-            { radius: 25, speed: 0.3, opacity: 0.2, thickness: 1.5 },
-            { radius: 35, speed: 0.2, opacity: 0.15, thickness: 1 }
-        ];
-        
-        wakeRings.forEach((ring, index) => {
-            const animatedRadius = island.radius + ring.radius + Math.sin(time * ring.speed + index) * 2;
-            
-            ctx.strokeStyle = `rgba(255, 255, 255, ${ring.opacity})`;
-            ctx.lineWidth = ring.thickness;
-            ctx.setLineDash([8, 8]);
-            ctx.lineDashOffset = -time * 15 + (index * 5);
-            
-            ctx.beginPath();
-            ctx.arc(island.x, island.y, animatedRadius, 0, Math.PI * 2);
-            ctx.stroke();
-        });
-        
-        ctx.setLineDash([]); // Reset dashes
+        // Removed dashed wake rings - keeping only the depth transitions
+        // No more cursor-like lines around islands
+        return;
     }
     
     // Methods for collisions and boundary checking
