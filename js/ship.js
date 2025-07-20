@@ -11,13 +11,13 @@ class Ship {
         this.prevX = x;
         this.prevY = y;
         
-        // Movement physics
+        // Movement physics - increased for massive ocean
         this.angle = 0; // angle in radians
         this.currentSpeed = 0;
-        this.maxSpeed = 200; // pixels per second
-        this.acceleration = 150; // acceleration
-        this.deceleration = 100; // deceleration
-        this.turnSpeed = 3; // turn speed (radians per second)
+        this.maxSpeed = 400; // pixels per second - doubled for bigger map
+        this.acceleration = 300; // acceleration - doubled
+        this.deceleration = 200; // deceleration - doubled
+        this.turnSpeed = 4; // turn speed (radians per second) - slightly faster
         
         // Visualization
         this.sprite = sprite;
@@ -170,18 +170,21 @@ class Ship {
             this.currentSpeed *= 0.5; // reduce speed on edge collision
         }
         
-        // Check island collisions
+        // Check island collisions with outline-based detection
         const islandCollision = map.checkIslandCollision(this.x, this.y, this.radius);
         if (islandCollision.collision) {
-            // Push away from island
-            const pushForce = 50;
-            this.x += islandCollision.pushX * pushForce * 0.016; // 0.016 ≈ deltaTime
-            this.y += islandCollision.pushY * pushForce * 0.016;
+            // Calculate push distance based on collision depth
+            const pushDistance = this.radius - islandCollision.distance;
             
-            // Reduce speed on collision
-            this.currentSpeed *= 0.3;
+            // Push away from island outline with smooth force
+            const pushForce = Math.min(pushDistance * 3, 60); // Slightly higher force for outline collision
+            this.x += islandCollision.pushX * pushForce;
+            this.y += islandCollision.pushY * pushForce;
             
-            // Constrain position within map after push
+            // Reduce speed on collision for more realistic physics
+            this.currentSpeed *= 0.4;
+            
+            // Ensure ship doesn't get pushed into another collision
             const newConstrainedPos = map.getConstrainedPosition(this.x, this.y, this.radius);
             this.x = newConstrainedPos.x;
             this.y = newConstrainedPos.y;
@@ -491,6 +494,14 @@ class Ship {
             ctx.lineTo(endX, endY);
             ctx.stroke();
         }
+        
+        // Draw ship state info
+        ctx.fillStyle = 'white';
+        ctx.font = '12px monospace';
+        ctx.fillText(`Ship: (${this.x.toFixed(1)}, ${this.y.toFixed(1)})`, this.x + 40, this.y - 20);
+        ctx.fillText(`Speed: ${this.currentSpeed.toFixed(1)}`, this.x + 40, this.y - 5);
+        ctx.fillText(`Angle: ${(this.angle * 180 / Math.PI).toFixed(1)}°`, this.x + 40, this.y + 10);
+        ctx.fillText(`F:${this.isMovingForward} B:${this.isMovingBackward} L:${this.isTurningLeft} R:${this.isTurningRight}`, this.x + 40, this.y + 25);
     }
     
     getDirectionString() {

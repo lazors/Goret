@@ -14,13 +14,13 @@ Browser-based HTML5/JavaScript game with pirate ship control on a sea map with a
 
 ## 🎯 Controls
 
-| Key | Action |
-|---------|-----|
-| **↑** or **W** | Move forward |
+| Key            | Action                 |
+| -------------- | ---------------------- |
+| **↑** or **W** | Move forward           |
 | **↓** or **S** | Move backward (slower) |
-| **←** or **A** | Turn left |
-| **→** or **D** | Turn right |
-| **Esc** | Pause/resume |
+| **←** or **A** | Turn left              |
+| **→** or **D** | Turn right             |
+| **Esc**        | Pause/resume           |
 
 ## 🗂️ Project Structure
 
@@ -34,24 +34,30 @@ Goret/
 │   ├── ship.js         # Ship movement logic
 │   └── map.js          # Map and wave animation
 └── assets/
-    └── icons/          # Future icons
+    ├── Islands/        # Island images and textures
+    ├── Ships/          # Ship models and sprites
+    ├── icons/          # UI icons and interface elements
+    └── models/         # 3D models and additional game objects
 ```
 
 ## ⚙️ Technical Details
 
 ### Ship Physics
-- **Maximum speed**: 200 pixels/sec
-- **Acceleration**: 150 pixels/sec²
-- **Deceleration**: 100 pixels/sec²
-- **Turn speed**: 3 radians/sec
+
+- **Maximum speed**: 400 pixels/sec (doubled for massive ocean)
+- **Acceleration**: 300 pixels/sec² (doubled)
+- **Deceleration**: 200 pixels/sec² (doubled)
+- **Turn speed**: 4 radians/sec (increased)
 
 ### Map
-- **Size**: 1024×768 pixels
-- **4 islands** of different sizes
+
+- **Size**: 10,240×7,680 pixels (10x bigger massive ocean)
+- **5 islands** scattered across the ocean
 - **Two-layer wave animation** with different speeds
 - **Collisions** with automatic repulsion
 
 ### Visual Effects
+
 - Ship wake (up to 20 points, fading over 3 seconds)
 - Water splashes at high speed
 - Animated rings around islands
@@ -68,11 +74,13 @@ Goret/
 ## 🛠️ Developer Mode
 
 For debugging, set in browser console:
+
 ```javascript
 window.DEBUG_MODE = true;
 ```
 
 This will show:
+
 - FPS counter
 - Ship position
 - Current speed
@@ -84,22 +92,26 @@ This will show:
 Next steps for game development:
 
 ### 🧭 Navigation
+
 - Compass with real directions
 - Mini-map
 - Map markers
 
 ### 🌊 Wind Mechanics
+
 - Dynamic wind affects speed
 - Wind direction visualization
 - Strategic wind usage
 
 ### 🏝️ Map Objects
+
 - Treasures to collect
 - Enemy ships
 - Trading ports
 - Underwater reefs
 
 ### 🎨 Graphics Improvements
+
 - Real sprites instead of placeholders
 - Particle effects
 - Parallax for waves
@@ -123,4 +135,4 @@ Created according to technical specifications for a pirate adventure with emphas
 
 ---
 
-**Sails are raised, course set for adventure! ⚓🌊** 
+**Sails are raised, course set for adventure! ⚓🌊**

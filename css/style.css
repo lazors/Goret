@@ -97,14 +97,15 @@ body {
     margin-bottom: 0;
 }
 
-.speed-indicator, .direction-indicator {
+.speed-indicator, .direction-indicator, .zoom-indicator {
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 .speed-indicator span:first-child,
-.direction-indicator span:first-child {
+.direction-indicator span:first-child,
+.zoom-indicator span:first-child {
     color: #95a5a6;
     font-weight: 500;
 }
@@ -117,6 +118,12 @@ body {
 
 #directionValue {
     color: #f39c12;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+#zoomValue {
+    color: #3498db;
     font-weight: bold;
     font-size: 1.2em;
 }
