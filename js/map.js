@@ -28,12 +28,63 @@ class GameMap {
             bottom: this.height
         };
         
-        // Islands and obstacles
+        // Islands and obstacles - realistic irregular shapes
         this.islands = [
-            { x: 200, y: 150, radius: 80 },
-            { x: 700, y: 300, radius: 100 },
-            { x: 400, y: 500, radius: 60 },
-            { x: 800, y: 600, radius: 90 }
+            // St. Kitts - long, slender, banana-like shape
+            { 
+                x: 200, y: 150, 
+                points: [
+                    {x: -60, y: -20}, {x: -50, y: -15}, {x: -40, y: -10}, {x: -30, y: -5},
+                    {x: -20, y: 0}, {x: -10, y: 5}, {x: 0, y: 10}, {x: 10, y: 15},
+                    {x: 20, y: 20}, {x: 30, y: 25}, {x: 40, y: 30}, {x: 50, y: 25},
+                    {x: 60, y: 20}, {x: 55, y: 10}, {x: 50, y: 0}, {x: 45, y: -10},
+                    {x: 40, y: -20}, {x: 30, y: -25}, {x: 20, y: -30}, {x: 10, y: -25},
+                    {x: 0, y: -20}, {x: -10, y: -15}, {x: -20, y: -10}, {x: -30, y: -5},
+                    {x: -40, y: 0}, {x: -50, y: -5}, {x: -60, y: -10}
+                ],
+                radius: 80
+            },
+            // Nevis - rounded, almost circular
+            { 
+                x: 200, y: 280, 
+                points: [
+                    {x: -30, y: -30}, {x: -20, y: -35}, {x: -10, y: -40}, {x: 0, y: -35},
+                    {x: 10, y: -30}, {x: 20, y: -25}, {x: 30, y: -20}, {x: 35, y: -10},
+                    {x: 40, y: 0}, {x: 35, y: 10}, {x: 30, y: 20}, {x: 25, y: 30},
+                    {x: 20, y: 35}, {x: 10, y: 40}, {x: 0, y: 35}, {x: -10, y: 30},
+                    {x: -20, y: 25}, {x: -30, y: 20}, {x: -35, y: 10}, {x: -40, y: 0},
+                    {x: -35, y: -10}, {x: -30, y: -20}
+                ],
+                radius: 60
+            },
+            // Antigua - complex, jagged, star-like shape
+            { 
+                x: 700, y: 300, 
+                points: [
+                    {x: -40, y: -50}, {x: -30, y: -60}, {x: -20, y: -55}, {x: -10, y: -45},
+                    {x: 0, y: -40}, {x: 15, y: -50}, {x: 30, y: -45}, {x: 45, y: -40},
+                    {x: 60, y: -30}, {x: 70, y: -20}, {x: 75, y: -10}, {x: 70, y: 0},
+                    {x: 65, y: 10}, {x: 60, y: 20}, {x: 50, y: 30}, {x: 40, y: 40},
+                    {x: 30, y: 50}, {x: 20, y: 55}, {x: 10, y: 60}, {x: 0, y: 55},
+                    {x: -10, y: 50}, {x: -20, y: 45}, {x: -30, y: 40}, {x: -40, y: 35},
+                    {x: -50, y: 30}, {x: -55, y: 20}, {x: -60, y: 10}, {x: -55, y: 0},
+                    {x: -50, y: -10}, {x: -45, y: -20}, {x: -40, y: -30}
+                ],
+                radius: 100
+            },
+            // Montserrat - oval/teardrop shape
+            { 
+                x: 450, y: 550, 
+                points: [
+                    {x: -25, y: -40}, {x: -15, y: -45}, {x: -5, y: -40}, {x: 5, y: -35},
+                    {x: 15, y: -30}, {x: 25, y: -25}, {x: 30, y: -15}, {x: 35, y: -5},
+                    {x: 35, y: 5}, {x: 30, y: 15}, {x: 25, y: 25}, {x: 20, y: 35},
+                    {x: 15, y: 40}, {x: 5, y: 45}, {x: -5, y: 40}, {x: -15, y: 35},
+                    {x: -25, y: 30}, {x: -30, y: 20}, {x: -35, y: 10}, {x: -35, y: 0},
+                    {x: -30, y: -10}, {x: -25, y: -20}, {x: -20, y: -30}
+                ],
+                radius: 70
+            }
         ];
         
         console.log('🗺️ Map initialized with enhanced wave system');
@@ -207,7 +258,7 @@ class GameMap {
     }
     
     drawIslandsOverlay(ctx) {
-        // Enhanced island rendering with realistic seashores and depth transitions
+        // Enhanced island rendering with realistic irregular shapes
         this.islands.forEach(island => {
             // Draw depth transitions (lighter water near islands)
             this.drawIslandDepthTransition(ctx, island);
@@ -217,25 +268,43 @@ class GameMap {
             
             // Island shadow in water
             ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-            ctx.beginPath();
-            ctx.arc(island.x + 3, island.y + 3, island.radius + 5, 0, Math.PI * 2);
-            ctx.fill();
+            this.drawIslandShape(ctx, island, 3, 3);
             
             // Island base
             ctx.fillStyle = '#8fbc8f';
-            ctx.beginPath();
-            ctx.arc(island.x, island.y, island.radius, 0, Math.PI * 2);
-            ctx.fill();
+            this.drawIslandShape(ctx, island);
             
             // Island highlight
             ctx.fillStyle = '#a8d5a8';
-            ctx.beginPath();
-            ctx.arc(island.x - 5, island.y - 5, island.radius - 10, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Draw realistic island wakes
-            this.drawRealisticIslandWakes(ctx, island);
+            this.drawIslandShape(ctx, island, -5, -5, 0.8);
         });
+    }
+    
+    drawIslandShape(ctx, island, offsetX = 0, offsetY = 0, scale = 1.0) {
+        if (island.points) {
+            // Draw irregular shape using points
+            ctx.beginPath();
+            const firstPoint = island.points[0];
+            ctx.moveTo(
+                island.x + offsetX + (firstPoint.x * scale), 
+                island.y + offsetY + (firstPoint.y * scale)
+            );
+            
+            for (let i = 1; i < island.points.length; i++) {
+                const point = island.points[i];
+                ctx.lineTo(
+                    island.x + offsetX + (point.x * scale), 
+                    island.y + offsetY + (point.y * scale)
+                );
+            }
+            ctx.closePath();
+            ctx.fill();
+        } else {
+            // Fallback to circle for backward compatibility
+            ctx.beginPath();
+            ctx.arc(island.x + offsetX, island.y + offsetY, island.radius * scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
     
     drawIslandDepthTransition(ctx, island) {
@@ -305,9 +374,17 @@ class GameMap {
     
     checkIslandCollision(x, y, radius = 32) {
         for (let island of this.islands) {
-            const distance = Math.sqrt(
-                Math.pow(x - island.x, 2) + Math.pow(y - island.y, 2)
-            );
+            let distance;
+            
+            if (island.points) {
+                // Check collision with irregular shape using point-to-polygon distance
+                distance = this.getDistanceToPolygon(x, y, island);
+            } else {
+                // Fallback to circle collision for backward compatibility
+                distance = Math.sqrt(
+                    Math.pow(x - island.x, 2) + Math.pow(y - island.y, 2)
+                );
+            }
             
             if (distance < island.radius + radius) {
                 return {
@@ -321,6 +398,57 @@ class GameMap {
         }
         
         return { collision: false };
+    }
+    
+    getDistanceToPolygon(x, y, island) {
+        // Calculate distance from point to irregular polygon
+        let minDistance = Infinity;
+        
+        for (let i = 0; i < island.points.length; i++) {
+            const currentPoint = island.points[i];
+            const nextPoint = island.points[(i + 1) % island.points.length];
+            
+            const px = island.x + currentPoint.x;
+            const py = island.y + currentPoint.y;
+            const nx = island.x + nextPoint.x;
+            const ny = island.y + nextPoint.y;
+            
+            // Distance to line segment
+            const distance = this.distanceToLineSegment(x, y, px, py, nx, ny);
+            minDistance = Math.min(minDistance, distance);
+        }
+        
+        return minDistance;
+    }
+    
+    distanceToLineSegment(px, py, x1, y1, x2, y2) {
+        const A = px - x1;
+        const B = py - y1;
+        const C = x2 - x1;
+        const D = y2 - y1;
+        
+        const dot = A * C + B * D;
+        const lenSq = C * C + D * D;
+        let param = -1;
+        
+        if (lenSq !== 0) param = dot / lenSq;
+        
+        let xx, yy;
+        
+        if (param < 0) {
+            xx = x1;
+            yy = y1;
+        } else if (param > 1) {
+            xx = x2;
+            yy = y2;
+        } else {
+            xx = x1 + param * C;
+            yy = y1 + param * D;
+        }
+        
+        const dx = px - xx;
+        const dy = py - yy;
+        return Math.sqrt(dx * dx + dy * dy);
     }
     
     getConstrainedPosition(x, y, radius = 32) {
