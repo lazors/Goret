@@ -11,13 +11,13 @@ class Ship {
         this.prevX = x;
         this.prevY = y;
         
-        // Movement physics
+        // Movement physics - increased for massive ocean
         this.angle = 0; // angle in radians
         this.currentSpeed = 0;
-        this.maxSpeed = 200; // pixels per second
-        this.acceleration = 150; // acceleration
-        this.deceleration = 100; // deceleration
-        this.turnSpeed = 3; // turn speed (radians per second)
+        this.maxSpeed = 400; // pixels per second - doubled for bigger map
+        this.acceleration = 300; // acceleration - doubled
+        this.deceleration = 200; // deceleration - doubled
+        this.turnSpeed = 4; // turn speed (radians per second) - slightly faster
         
         // Visualization
         this.sprite = sprite;
@@ -170,16 +170,17 @@ class Ship {
             this.currentSpeed *= 0.5; // reduce speed on edge collision
         }
         
-        // Check island collisions
-        const islandCollision = map.checkIslandCollision(this.x, this.y, this.radius);
+        // Check island collisions with a smaller collision radius to prevent getting stuck
+        const collisionRadius = this.radius * 0.8; // Use 80% of ship radius for collision detection
+        const islandCollision = map.checkIslandCollision(this.x, this.y, collisionRadius);
         if (islandCollision.collision) {
-            // Push away from island
-            const pushForce = 50;
+            // Push away from island with more force
+            const pushForce = 100;
             this.x += islandCollision.pushX * pushForce * 0.016; // 0.016 ≈ deltaTime
             this.y += islandCollision.pushY * pushForce * 0.016;
             
-            // Reduce speed on collision
-            this.currentSpeed *= 0.3;
+            // Reduce speed on collision but not as much
+            this.currentSpeed *= 0.5;
             
             // Constrain position within map after push
             const newConstrainedPos = map.getConstrainedPosition(this.x, this.y, this.radius);
@@ -491,6 +492,14 @@ class Ship {
             ctx.lineTo(endX, endY);
             ctx.stroke();
         }
+        
+        // Draw ship state info
+        ctx.fillStyle = 'white';
+        ctx.font = '12px monospace';
+        ctx.fillText(`Ship: (${this.x.toFixed(1)}, ${this.y.toFixed(1)})`, this.x + 40, this.y - 20);
+        ctx.fillText(`Speed: ${this.currentSpeed.toFixed(1)}`, this.x + 40, this.y - 5);
+        ctx.fillText(`Angle: ${(this.angle * 180 / Math.PI).toFixed(1)}°`, this.x + 40, this.y + 10);
+        ctx.fillText(`F:${this.isMovingForward} B:${this.isMovingBackward} L:${this.isTurningLeft} R:${this.isTurningRight}`, this.x + 40, this.y + 25);
     }
     
     getDirectionString() {

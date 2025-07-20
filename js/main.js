@@ -130,8 +130,9 @@ class Game {
         
         // List of resources to load
         const assetList = [
-            { key: 'map', type: 'placeholder', width: 1024, height: 768, color: '#1e3a5f' },
-            { key: 'ship', type: 'image', src: 'ship-4741839_960_720.webp' },
+            { key: 'map', type: 'placeholder', width: 10240, height: 7680, color: '#1e3a5f' },
+            { key: 'ship', type: 'image', src: 'assets/Ships/ship-4741839_960_720.webp' },
+            { key: 'island', type: 'image', src: 'assets/Islands/saint_kits.png' },
             { key: 'wave', type: 'placeholder', width: 128, height: 128, color: '#2980b9' }
         ];
         
@@ -179,13 +180,13 @@ class Game {
             const ctx = canvas.getContext('2d');
             
             if (assetInfo.key === 'map') {
-                // Create gradient map without islands
-                const gradient = ctx.createRadialGradient(512, 384, 100, 512, 384, 400);
+                // Create gradient map without islands - 10x bigger
+                const gradient = ctx.createRadialGradient(5120, 3840, 1000, 5120, 3840, 4000);
                 gradient.addColorStop(0, '#2980b9');
                 gradient.addColorStop(0.5, '#3498db');
                 gradient.addColorStop(1, '#1e3a5f');
                 ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, 1024, 768);
+                ctx.fillRect(0, 0, 10240, 7680);
             } else if (assetInfo.key === 'ship') {
                 // Simple ship sprite
                 ctx.fillStyle = '#8b4513';
@@ -250,8 +251,8 @@ class Game {
         // Initialize map
         this.map = new GameMap(this.canvas, this.assets);
         
-        // Initialize ship at map center
-        this.ship = new Ship(512, 384, this.assets.ship);
+        // Initialize ship at a safe starting position in the massive ocean
+        this.ship = new Ship(1000, 1000, this.assets.ship);
     }
     
     gameLoop(currentTime = 0) {
@@ -304,10 +305,21 @@ class Game {
         // Apply zoom and center on ship
         this.ctx.save();
         
-        // Center the view on the ship
+        // Center the view on the ship, but keep camera within map bounds
         if (this.ship) {
+            // Calculate camera position to center on ship
             this.cameraX = this.ship.x;
             this.cameraY = this.ship.y;
+            
+            // Keep camera within map bounds to prevent showing empty space
+            const mapWidth = 10240; // Updated for 10x bigger map
+            const mapHeight = 7680;
+            const canvasWidth = this.canvas.width / this.zoom;
+            const canvasHeight = this.canvas.height / this.zoom;
+            
+            // Constrain camera to keep map visible
+            this.cameraX = Math.max(canvasWidth / 2, Math.min(mapWidth - canvasWidth / 2, this.cameraX));
+            this.cameraY = Math.max(canvasHeight / 2, Math.min(mapHeight - canvasHeight / 2, this.cameraY));
         }
         
         // Apply transformations: center, zoom, then offset to ship position
@@ -378,6 +390,19 @@ class Game {
         if (this.map) {
             this.map.drawDebugInfo(this.ctx);
         }
+        
+        // Draw camera and zoom info
+        this.ctx.fillText(`Camera: (${this.cameraX.toFixed(1)}, ${this.cameraY.toFixed(1)})`, 10, 60);
+        this.ctx.fillText(`Zoom: ${(this.zoom * 100).toFixed(1)}%`, 10, 75);
+        this.ctx.fillText(`Canvas: ${this.canvas.width}x${this.canvas.height}`, 10, 90);
+        
+        // Draw key states
+        let keyInfo = 'Keys: ';
+        if (this.keys['ArrowUp'] || this.keys['KeyW']) keyInfo += 'W ';
+        if (this.keys['ArrowDown'] || this.keys['KeyS']) keyInfo += 'S ';
+        if (this.keys['ArrowLeft'] || this.keys['KeyA']) keyInfo += 'A ';
+        if (this.keys['ArrowRight'] || this.keys['KeyD']) keyInfo += 'D ';
+        this.ctx.fillText(keyInfo, 10, 105);
     }
     
     togglePause() {
@@ -408,9 +433,12 @@ class Game {
     }
     
     handleResize() {
-        // Handle window resize
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
+        // Handle window resize - maintain aspect ratio and minimum size
+        const minWidth = 1024;
+        const minHeight = 768;
+        
+        this.canvas.width = Math.max(window.innerWidth, minWidth);
+        this.canvas.height = Math.max(window.innerHeight, minHeight);
     }
     
     // Zoom methods
@@ -445,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
     game = new Game();
     
     // Set development mode
-    window.DEBUG_MODE = false; // Set to true to display debug info
+    window.DEBUG_MODE = true; // Set to true to display debug info
     
     console.log('🌊 Pirate adventure begins!');
 }); 

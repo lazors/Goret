@@ -8,9 +8,9 @@ class GameMap {
         this.canvas = canvas;
         this.assets = assets;
         
-        // Map dimensions
-        this.width = 1024;
-        this.height = 768;
+        // Map dimensions - 10x bigger for massive ocean
+        this.width = 10240; // 10x 1024
+        this.height = 7680; // 10x 768
         
         // Enhanced wave system
         this.waveLayers = [];
@@ -30,6 +30,9 @@ class GameMap {
         
         // Islands and obstacles - realistic irregular shapes
         this.islands = [];
+        
+        // Initialize islands with positions
+        this.initializeIslands();
         
         console.log('🗺️ Map initialized with enhanced wave system');
     }
@@ -70,6 +73,49 @@ class GameMap {
         ];
     }
     
+    initializeIslands() {
+        // Add multiple islands across the massive ocean
+        this.islands = [
+            {
+                x: 5120, // Center of new map
+                y: 3840,
+                radius: 120, // Bigger island for bigger map
+                name: 'Tropical Isle',
+                image: this.assets.island
+            },
+            {
+                x: 2000,
+                y: 1500,
+                radius: 80,
+                name: 'Northern Reef',
+                image: this.assets.island
+            },
+            {
+                x: 8000,
+                y: 6000,
+                radius: 100,
+                name: 'Southern Atoll',
+                image: this.assets.island
+            },
+            {
+                x: 3000,
+                y: 6000,
+                radius: 90,
+                name: 'Western Haven',
+                image: this.assets.island
+            },
+            {
+                x: 7000,
+                y: 1500,
+                radius: 70,
+                name: 'Eastern Point',
+                image: this.assets.island
+            }
+        ];
+        
+        console.log('🏝️ Islands initialized:', this.islands.length);
+    }
+    
     update(deltaTime) {
         // Update wave animation time (continuous, never resets)
         this.waveTime += this.waveSpeed * deltaTime;
@@ -96,8 +142,8 @@ class GameMap {
         if (this.assets.map) {
             ctx.drawImage(this.assets.map, 0, 0);
         } else {
-            // Enhanced gradient background for foam patterns
-            const gradient = ctx.createRadialGradient(512, 384, 100, 512, 384, 600);
+            // Enhanced gradient background for massive ocean
+            const gradient = ctx.createRadialGradient(5120, 3840, 1000, 5120, 3840, 6000);
             gradient.addColorStop(0, '#0c2d6b'); // Deep blue
             gradient.addColorStop(0.2, '#1e3a5f'); // Dark blue
             gradient.addColorStop(0.4, '#2980b9'); // Medium blue
@@ -195,14 +241,14 @@ class GameMap {
         });
         
         // Create lighting effect: brighter near islands, darker in deep water
-        const maxLightDistance = 150; // Distance where lighting effect fades
+        const maxLightDistance = 300; // Increased for bigger map
         const lightingFactor = Math.max(0.3, Math.min(1.5, 1.5 - (minDistance / maxLightDistance)));
         
         return lightingFactor;
     }
     
     drawIslandsOverlay(ctx) {
-        // Enhanced island rendering with realistic irregular shapes
+        // Enhanced island rendering with island images
         this.islands.forEach(island => {
             // Draw depth transitions (lighter water near islands)
             this.drawIslandDepthTransition(ctx, island);
@@ -210,17 +256,41 @@ class GameMap {
             // Draw sandy seashore
             this.drawIslandSeashore(ctx, island);
             
-            // Island shadow in water
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-            this.drawIslandShape(ctx, island, 3, 3);
+            // Draw island shadow in water
+            if (island.image) {
+                ctx.save();
+                ctx.globalAlpha = 0.1;
+                ctx.drawImage(
+                    island.image,
+                    island.x - island.radius + 3,
+                    island.y - island.radius + 3,
+                    island.radius * 2,
+                    island.radius * 2
+                );
+                ctx.restore();
+            } else {
+                // Fallback shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                this.drawIslandShape(ctx, island, 3, 3);
+            }
             
-            // Island base
-            ctx.fillStyle = '#8fbc8f';
-            this.drawIslandShape(ctx, island);
-            
-            // Island highlight
-            ctx.fillStyle = '#a8d5a8';
-            this.drawIslandShape(ctx, island, -5, -5, 0.8);
+            // Draw island image
+            if (island.image) {
+                ctx.drawImage(
+                    island.image,
+                    island.x - island.radius,
+                    island.y - island.radius,
+                    island.radius * 2,
+                    island.radius * 2
+                );
+            } else {
+                // Fallback to shape drawing
+                ctx.fillStyle = '#8fbc8f';
+                this.drawIslandShape(ctx, island);
+                
+                ctx.fillStyle = '#a8d5a8';
+                this.drawIslandShape(ctx, island, -5, -5, 0.8);
+            }
         });
     }
     
@@ -415,8 +485,8 @@ class GameMap {
             minDistance = Math.min(minDistance, distance - island.radius);
         });
         
-        // Normalized depth from 0 to 1
-        return Math.max(0, Math.min(1, minDistance / 200));
+        // Normalized depth from 0 to 1 - increased range for bigger map
+        return Math.max(0, Math.min(1, minDistance / 500));
     }
     
     // Get current wind (for future mechanics)
