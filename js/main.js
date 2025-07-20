@@ -6,7 +6,20 @@
 class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
+        
+        if (!this.canvas) {
+            console.error('❌ Canvas element not found!');
+            throw new Error('Canvas element with id "gameCanvas" not found');
+        }
+        
         this.ctx = this.canvas.getContext('2d');
+        
+        if (!this.ctx) {
+            console.error('❌ Canvas context not available!');
+            throw new Error('Canvas 2D context not available');
+        }
+        
+        console.log('✅ Canvas initialized:', this.canvas.width, 'x', this.canvas.height);
         
         // Game objects
         this.map = null;
@@ -45,32 +58,52 @@ class Game {
         this.speedValue = document.getElementById('speedValue');
         this.directionValue = document.getElementById('directionValue');
         
+        // Check if essential UI elements exist
+        if (!this.loadingScreen) console.warn('⚠️ Loading screen element not found');
+        if (!this.speedValue) console.warn('⚠️ Speed value element not found');
+        if (!this.directionValue) console.warn('⚠️ Direction value element not found');
+        
         this.init();
     }
     
     async init() {
         console.log('🏴‍☠️ Initializing pirate game...');
         
-        // Setup canvas
-        this.setupCanvas();
-        
-        // Setup event handlers
-        this.setupEventListeners();
-        
-        // Load assets
-        await this.loadAssets();
-        
-        // Initialize game objects
-        this.initGameObjects();
-        
-        // Hide loading screen
-        this.hideLoadingScreen();
-        
-        // Start game loop
-        this.gameState = 'playing';
-        this.gameLoop();
-        
-        console.log('⚓ Game successfully launched!');
+        try {
+            // Setup canvas
+            console.log('📱 Setting up canvas...');
+            this.setupCanvas();
+            
+            // Setup event handlers
+            console.log('🎮 Setting up event listeners...');
+            this.setupEventListeners();
+            
+            // Load assets
+            console.log('📦 Loading assets...');
+            await this.loadAssets();
+            
+            // Initialize game objects
+            console.log('🎯 Initializing game objects...');
+            this.initGameObjects();
+            
+            // Hide loading screen
+            console.log('🎭 Hiding loading screen...');
+            this.hideLoadingScreen();
+            
+            // Start game loop
+            console.log('🔄 Starting game loop...');
+            this.gameState = 'playing';
+            this.gameLoop();
+            
+            console.log('⚓ Game successfully launched!');
+            
+        } catch (error) {
+            console.error('❌ Game initialization failed:', error);
+            this.updateLoadingText('Error: ' + error.message);
+            
+            // Try to show a basic fallback
+            this.showErrorFallback();
+        }
     }
     
     setupCanvas() {
@@ -80,6 +113,15 @@ class Game {
         
         // Disable context menu
         this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        
+        // Test draw to ensure canvas is working
+        this.ctx.fillStyle = '#2980b9';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = '20px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('GORET Loading...', this.canvas.width / 2, this.canvas.height / 2);
+        console.log('🎨 Test draw completed on canvas');
     }
     
     setupEventListeners() {
@@ -146,38 +188,46 @@ class Game {
     }
     
     async loadAsset(assetInfo) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             this.updateLoadingText(`Loading ${assetInfo.key}...`);
+            console.log(`📥 Loading asset: ${assetInfo.key} (${assetInfo.type})`);
             
             if (assetInfo.type === 'image') {
                 // Load actual image
                 const img = new Image();
+                
+                // Set crossOrigin to allow canvas analysis
+                img.crossOrigin = 'anonymous';
+                
                 img.onload = () => {
+                    console.log(`✅ Successfully loaded image: ${assetInfo.key}`);
                     this.assets[assetInfo.key] = img;
                     this.loadedAssets++;
                     this.updateLoadingProgress();
                     setTimeout(() => resolve(), 200);
                 };
-                img.onerror = () => {
-                    console.error(`Failed to load image: ${assetInfo.src}`);
+                img.onerror = (error) => {
+                    console.warn(`⚠️ Failed to load image: ${assetInfo.src}, creating placeholder`);
                     // Fallback to placeholder
-                    this.createPlaceholder(assetInfo).then(resolve);
+                    this.createPlaceholder(assetInfo).then(resolve).catch(reject);
                 };
                 img.src = assetInfo.src;
             } else {
                 // Create placeholder
-                this.createPlaceholder(assetInfo).then(resolve);
+                console.log(`🎨 Creating placeholder for: ${assetInfo.key}`);
+                this.createPlaceholder(assetInfo).then(resolve).catch(reject);
             }
         });
     }
     
     async createPlaceholder(assetInfo) {
-        return new Promise((resolve) => {
-            // Create placeholder for image
-            const canvas = document.createElement('canvas');
-            canvas.width = assetInfo.width;
-            canvas.height = assetInfo.height;
-            const ctx = canvas.getContext('2d');
+        return new Promise((resolve, reject) => {
+            try {
+                // Create placeholder for image
+                const canvas = document.createElement('canvas');
+                canvas.width = assetInfo.width;
+                canvas.height = assetInfo.height;
+                const ctx = canvas.getContext('2d');
             
             if (assetInfo.key === 'map') {
                 // Create single shade map background - 10x bigger
@@ -221,12 +271,16 @@ class Game {
                 }
             }
             
-            this.assets[assetInfo.key] = canvas;
-            this.loadedAssets++;
-            this.updateLoadingProgress();
-            
-            // Small delay for realism
-            setTimeout(() => resolve(), 200);
+                this.assets[assetInfo.key] = canvas;
+                this.loadedAssets++;
+                this.updateLoadingProgress();
+                
+                // Small delay for realism
+                setTimeout(() => resolve(), 200);
+            } catch (error) {
+                console.error('❌ Error creating placeholder:', error);
+                reject(error);
+            }
         });
     }
     
@@ -425,6 +479,39 @@ class Game {
     hideLoadingScreen() {
         if (this.loadingScreen) {
             this.loadingScreen.classList.add('hidden');
+            console.log('🎭 Loading screen hidden');
+        } else {
+            console.warn('⚠️ No loading screen to hide');
+        }
+        
+        // Force show canvas and game area
+        if (this.canvas) {
+            this.canvas.style.display = 'block';
+            this.canvas.style.visibility = 'visible';
+            console.log('👁️ Canvas visibility ensured');
+        }
+    }
+    
+    showErrorFallback() {
+        console.log('🔧 Showing error fallback...');
+        
+        // Hide loading screen
+        this.hideLoadingScreen();
+        
+        // Draw a simple error message on canvas
+        if (this.ctx) {
+            this.ctx.fillStyle = '#2c3e50';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            this.ctx.fillStyle = '#e74c3c';
+            this.ctx.font = '24px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('Game Loading Error', this.canvas.width / 2, this.canvas.height / 2 - 40);
+            
+            this.ctx.fillStyle = '#ecf0f1';
+            this.ctx.font = '16px Arial';
+            this.ctx.fillText('Check the browser console for details', this.canvas.width / 2, this.canvas.height / 2 + 20);
+            this.ctx.fillText('Try refreshing the page', this.canvas.width / 2, this.canvas.height / 2 + 50);
         }
     }
     

@@ -94,9 +94,25 @@ class GameMap {
     
     generateIslandOutlines() {
         this.islands.forEach(island => {
-            // Use manual outline generation for reliable collision detection
-            island.outline = this.generateManualOutline(island.radius);
-            console.log('🏝️ Generated manual outline for', island.name, 'with', island.outline.points.length, 'points');
+            console.log('🏝️ Starting outline generation for', island.name);
+            console.log('📷 Island image available:', !!island.image);
+            console.log('🖼️ Image type:', island.image ? island.image.constructor.name : 'None');
+            
+            // Use image-based outline generation for accurate coastline collision
+            if (island.image) {
+                try {
+                    island.outline = this.generateOutlineFromImage(island.image, island.radius);
+                    console.log('✅ Generated image-based outline for', island.name, 'with', island.outline.points.length, 'points');
+                } catch (error) {
+                    console.error('❌ Error generating image outline:', error);
+                    island.outline = this.generateManualOutline(island.radius);
+                    console.log('🔄 Fallback to manual outline for', island.name, 'with', island.outline.points.length, 'points');
+                }
+            } else {
+                // Fallback to manual outline if no image available
+                island.outline = this.generateManualOutline(island.radius);
+                console.log('🔄 Generated manual outline for', island.name, 'with', island.outline.points.length, 'points');
+            }
         });
     }
     
@@ -132,90 +148,96 @@ class GameMap {
             const tempCanvas = document.createElement('canvas');
             const tempCtx = tempCanvas.getContext('2d');
             
-            // Set canvas size to image size
-            tempCanvas.width = radius * 2;
-            tempCanvas.height = radius * 2;
+            // Use higher resolution for better coastline detection
+            const resolution = radius * 2;
+            tempCanvas.width = resolution;
+            tempCanvas.height = resolution;
             
             // Draw the image
-            tempCtx.drawImage(image, 0, 0, radius * 2, radius * 2);
+            tempCtx.drawImage(image, 0, 0, resolution, resolution);
             
             // Try to get image data (may fail due to CORS)
             let imageData;
             try {
-                imageData = tempCtx.getImageData(0, 0, radius * 2, radius * 2);
+                imageData = tempCtx.getImageData(0, 0, resolution, resolution);
+                console.log('✅ Successfully got image data for coastline analysis');
             } catch (error) {
-                console.warn('⚠️ CORS blocked image analysis, using fallback circular outline');
-                return this.generateCircularOutline(radius);
+                console.warn('⚠️ CORS blocked image analysis:', error.message);
+                console.log('🔄 Falling back to manual outline generation');
+                return this.generateManualOutline(radius);
             }
             
             const data = imageData.data;
             
-            // Find the outline points by scanning for non-transparent pixels
+            // Find coastline by edge detection - scan from outside to inside
             const outlinePoints = [];
-            const step = 2; // Sample every 2 pixels for performance
+            const step = 1; // Use 1 pixel accuracy for better coastline detection
+            const center = resolution / 2;
             
-            for (let y = 0; y < radius * 2; y += step) {
-                for (let x = 0; x < radius * 2; x += step) {
-                    const index = (y * radius * 2 + x) * 4;
-                    const alpha = data[index + 3];
+            // Scan in radial directions from center to find island edges
+            const angleSteps = 128; // More angles for smoother coastline
+            for (let i = 0; i < angleSteps; i++) {
+                const angle = (i / angleSteps) * Math.PI * 2;
+                const dx = Math.cos(angle);
+                const dy = Math.sin(angle);
+                
+                // Scan from center outwards to find the edge
+                for (let distance = 0; distance < radius; distance += step) {
+                    const x = Math.round(center + dx * distance);
+                    const y = Math.round(center + dy * distance);
                     
-                    // If pixel is not transparent, check if it's on the edge
-                    if (alpha > 128) {
-                        // Check if any neighboring pixel is transparent (making this an edge pixel)
-                        let isEdge = false;
+                    if (x >= 0 && x < resolution && y >= 0 && y < resolution) {
+                        const index = (y * resolution + x) * 4;
+                        const alpha = data[index + 3];
                         
-                        for (let dy = -step; dy <= step; dy += step) {
-                            for (let dx = -step; dx <= step; dx += step) {
-                                if (dx === 0 && dy === 0) continue;
-                                
-                                const nx = x + dx;
-                                const ny = y + dy;
-                                
-                                if (nx >= 0 && nx < radius * 2 && ny >= 0 && ny < radius * 2) {
-                                    const nIndex = (ny * radius * 2 + nx) * 4;
-                                    const nAlpha = data[nIndex + 3];
-                                    
-                                    if (nAlpha <= 128) {
-                                        isEdge = true;
-                                        break;
-                                    }
-                                } else {
-                                    // Outside bounds is considered transparent
-                                    isEdge = true;
-                                    break;
-                                }
-                            }
-                            if (isEdge) break;
-                        }
-                        
-                        if (isEdge) {
+                        // If we hit a transparent pixel, the previous one was the edge
+                        if (alpha <= 128) {
+                            const prevDistance = Math.max(0, distance - step);
+                            const edgeX = center + dx * prevDistance;
+                            const edgeY = center + dy * prevDistance;
+                            
                             // Convert to relative coordinates (center at 0,0)
                             outlinePoints.push({
-                                x: x - radius,
-                                y: y - radius
+                                x: edgeX - center,
+                                y: edgeY - center
                             });
+                            break;
                         }
+                    } else {
+                        // Hit canvas boundary, use current position
+                        const edgeX = center + dx * distance;
+                        const edgeY = center + dy * distance;
+                        
+                        outlinePoints.push({
+                            x: edgeX - center,
+                            y: edgeY - center
+                        });
+                        break;
                     }
                 }
             }
             
-            // If no outline points found, use circular fallback
+            // If no outline points found, use fallback
             if (outlinePoints.length === 0) {
-                console.warn('⚠️ No outline points found, using circular fallback');
-                return this.generateCircularOutline(radius);
+                console.warn('⚠️ No coastline points found, using fallback');
+                return this.generateManualOutline(radius);
             }
             
-            // Simplify outline by removing redundant points
-            const simplifiedPoints = this.simplifyOutline(outlinePoints, 3);
+            console.log('🏖️ Successfully extracted', outlinePoints.length, 'coastline points from island image');
+            
+            // Smooth the coastline by reducing noise
+            const smoothedPoints = this.smoothCoastline(outlinePoints);
+            
+            console.log('🌊 Coastline smoothed to', smoothedPoints.length, 'points');
             
             return {
-                points: simplifiedPoints,
-                bounds: this.calculateOutlineBounds(simplifiedPoints)
+                points: smoothedPoints,
+                bounds: this.calculateOutlineBounds(smoothedPoints)
             };
             
         } catch (error) {
-            console.warn('⚠️ Error generating outline, using circular fallback:', error);
-            return this.generateCircularOutline(radius);
+            console.warn('⚠️ Error generating coastline outline:', error);
+            return this.generateManualOutline(radius);
         }
     }
     
@@ -259,6 +281,36 @@ class GameMap {
         }
         
         return simplified;
+    }
+    
+    smoothCoastline(points) {
+        if (points.length < 3) return points;
+        
+        const smoothed = [];
+        const smoothingFactor = 0.3; // How much smoothing to apply (0 = no smoothing, 1 = max smoothing)
+        
+        // Apply simple moving average smoothing
+        for (let i = 0; i < points.length; i++) {
+            const prevIndex = (i - 1 + points.length) % points.length;
+            const nextIndex = (i + 1) % points.length;
+            
+            const current = points[i];
+            const prev = points[prevIndex];
+            const next = points[nextIndex];
+            
+            // Calculate smoothed position
+            const smoothedX = current.x * (1 - smoothingFactor) + 
+                            (prev.x + next.x) * smoothingFactor * 0.5;
+            const smoothedY = current.y * (1 - smoothingFactor) + 
+                            (prev.y + next.y) * smoothingFactor * 0.5;
+            
+            smoothed.push({
+                x: smoothedX,
+                y: smoothedY
+            });
+        }
+        
+        return smoothed;
     }
     
     calculateOutlineBounds(points) {
