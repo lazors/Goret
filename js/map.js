@@ -124,12 +124,9 @@ class GameMap {
     drawWaveLayer(ctx, layer) {
         const { amplitude, frequency, direction, color, thickness, currentTime, type } = layer;
         
-        ctx.strokeStyle = color;
-        ctx.lineWidth = thickness;
-        ctx.lineCap = 'round';
-        
-        // Draw wave crests as curved lines
-        this.drawWaveCrests(ctx, amplitude, frequency, direction, currentTime, type);
+        // Skip drawing for cleaner ocean surface
+        // Only keep subtle wave effects without visible lines
+        return;
     }
     
     drawWaveCrests(ctx, amplitude, frequency, direction, time, type) {
