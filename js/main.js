@@ -179,19 +179,13 @@ class Game {
             const ctx = canvas.getContext('2d');
             
             if (assetInfo.key === 'map') {
-                // Create gradient map with islands
+                // Create gradient map without islands
                 const gradient = ctx.createRadialGradient(512, 384, 100, 512, 384, 400);
                 gradient.addColorStop(0, '#2980b9');
                 gradient.addColorStop(0.5, '#3498db');
                 gradient.addColorStop(1, '#1e3a5f');
                 ctx.fillStyle = gradient;
                 ctx.fillRect(0, 0, 1024, 768);
-                
-                // Add several islands
-                this.drawIsland(ctx, 200, 150, 80, '#8fbc8f');
-                this.drawIsland(ctx, 700, 300, 100, '#90ee90');
-                this.drawIsland(ctx, 400, 500, 60, '#98fb98');
-                this.drawIsland(ctx, 800, 600, 90, '#9acd32');
             } else if (assetInfo.key === 'ship') {
                 // Simple ship sprite
                 ctx.fillStyle = '#8b4513';
