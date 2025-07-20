@@ -74,46 +74,205 @@ class GameMap {
     }
     
     initializeIslands() {
-        // Add multiple islands across the massive ocean
+        // Single Saint Kits island in the center of the massive ocean
         this.islands = [
             {
-                x: 5120, // Center of new map
-                y: 3840,
-                radius: 120, // Bigger island for bigger map
-                name: 'Tropical Isle',
-                image: this.assets.island
-            },
-            {
-                x: 2000,
+                x: 2000, // Moved closer to middle from left corner
                 y: 1500,
-                radius: 80,
-                name: 'Northern Reef',
-                image: this.assets.island
-            },
-            {
-                x: 8000,
-                y: 6000,
-                radius: 100,
-                name: 'Southern Atoll',
-                image: this.assets.island
-            },
-            {
-                x: 3000,
-                y: 6000,
-                radius: 90,
-                name: 'Western Haven',
-                image: this.assets.island
-            },
-            {
-                x: 7000,
-                y: 1500,
-                radius: 70,
-                name: 'Eastern Point',
-                image: this.assets.island
+                radius: 600, // 5x bigger island (120 * 5 = 600)
+                name: 'Saint Kits Island',
+                image: this.assets.island,
+                outline: null // Will be populated with actual island outline
             }
         ];
         
-        console.log('🏝️ Islands initialized:', this.islands.length);
+        // Generate outline data for collision detection
+        this.generateIslandOutlines();
+        
+        console.log('🏝️ Saint Kits Island initialized with outline collision');
+    }
+    
+    generateIslandOutlines() {
+        this.islands.forEach(island => {
+            // Use manual outline generation for reliable collision detection
+            island.outline = this.generateManualOutline(island.radius);
+            console.log('🏝️ Generated manual outline for', island.name, 'with', island.outline.points.length, 'points');
+        });
+    }
+    
+    generateManualOutline(radius) {
+        // Create a manual outline that approximates an island shape
+        // This is more reliable than image analysis and works consistently
+        const points = [];
+        const segments = 64; // More points for smoother outline
+        
+        // Create an irregular island-like shape
+        for (let i = 0; i < segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            
+            // Add some variation to make it look more like an island
+            const variation = 0.8 + 0.2 * Math.sin(angle * 3) + 0.1 * Math.sin(angle * 7);
+            const r = radius * variation;
+            
+            points.push({
+                x: Math.cos(angle) * r,
+                y: Math.sin(angle) * r
+            });
+        }
+        
+        return {
+            points: points,
+            bounds: { minX: -radius, minY: -radius, maxX: radius, maxY: radius }
+        };
+    }
+    
+    generateOutlineFromImage(image, radius) {
+        try {
+            // Create a temporary canvas to analyze the image
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Set canvas size to image size
+            tempCanvas.width = radius * 2;
+            tempCanvas.height = radius * 2;
+            
+            // Draw the image
+            tempCtx.drawImage(image, 0, 0, radius * 2, radius * 2);
+            
+            // Try to get image data (may fail due to CORS)
+            let imageData;
+            try {
+                imageData = tempCtx.getImageData(0, 0, radius * 2, radius * 2);
+            } catch (error) {
+                console.warn('⚠️ CORS blocked image analysis, using fallback circular outline');
+                return this.generateCircularOutline(radius);
+            }
+            
+            const data = imageData.data;
+            
+            // Find the outline points by scanning for non-transparent pixels
+            const outlinePoints = [];
+            const step = 2; // Sample every 2 pixels for performance
+            
+            for (let y = 0; y < radius * 2; y += step) {
+                for (let x = 0; x < radius * 2; x += step) {
+                    const index = (y * radius * 2 + x) * 4;
+                    const alpha = data[index + 3];
+                    
+                    // If pixel is not transparent, check if it's on the edge
+                    if (alpha > 128) {
+                        // Check if any neighboring pixel is transparent (making this an edge pixel)
+                        let isEdge = false;
+                        
+                        for (let dy = -step; dy <= step; dy += step) {
+                            for (let dx = -step; dx <= step; dx += step) {
+                                if (dx === 0 && dy === 0) continue;
+                                
+                                const nx = x + dx;
+                                const ny = y + dy;
+                                
+                                if (nx >= 0 && nx < radius * 2 && ny >= 0 && ny < radius * 2) {
+                                    const nIndex = (ny * radius * 2 + nx) * 4;
+                                    const nAlpha = data[nIndex + 3];
+                                    
+                                    if (nAlpha <= 128) {
+                                        isEdge = true;
+                                        break;
+                                    }
+                                } else {
+                                    // Outside bounds is considered transparent
+                                    isEdge = true;
+                                    break;
+                                }
+                            }
+                            if (isEdge) break;
+                        }
+                        
+                        if (isEdge) {
+                            // Convert to relative coordinates (center at 0,0)
+                            outlinePoints.push({
+                                x: x - radius,
+                                y: y - radius
+                            });
+                        }
+                    }
+                }
+            }
+            
+            // If no outline points found, use circular fallback
+            if (outlinePoints.length === 0) {
+                console.warn('⚠️ No outline points found, using circular fallback');
+                return this.generateCircularOutline(radius);
+            }
+            
+            // Simplify outline by removing redundant points
+            const simplifiedPoints = this.simplifyOutline(outlinePoints, 3);
+            
+            return {
+                points: simplifiedPoints,
+                bounds: this.calculateOutlineBounds(simplifiedPoints)
+            };
+            
+        } catch (error) {
+            console.warn('⚠️ Error generating outline, using circular fallback:', error);
+            return this.generateCircularOutline(radius);
+        }
+    }
+    
+    generateCircularOutline(radius) {
+        // Generate a circular outline as fallback
+        const points = [];
+        const segments = 32; // Number of points around the circle
+        
+        for (let i = 0; i < segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            points.push({
+                x: Math.cos(angle) * radius,
+                y: Math.sin(angle) * radius
+            });
+        }
+        
+        return {
+            points: points,
+            bounds: { minX: -radius, minY: -radius, maxX: radius, maxY: radius }
+        };
+    }
+    
+    simplifyOutline(points, tolerance) {
+        if (points.length <= 2) return points;
+        
+        const simplified = [];
+        let lastPoint = points[0];
+        simplified.push(lastPoint);
+        
+        for (let i = 1; i < points.length; i++) {
+            const point = points[i];
+            const distance = Math.sqrt(
+                Math.pow(point.x - lastPoint.x, 2) + 
+                Math.pow(point.y - lastPoint.y, 2)
+            );
+            
+            if (distance > tolerance) {
+                simplified.push(point);
+                lastPoint = point;
+            }
+        }
+        
+        return simplified;
+    }
+    
+    calculateOutlineBounds(points) {
+        let minX = Infinity, minY = Infinity;
+        let maxX = -Infinity, maxY = -Infinity;
+        
+        points.forEach(point => {
+            minX = Math.min(minX, point.x);
+            minY = Math.min(minY, point.y);
+            maxX = Math.max(maxX, point.x);
+            maxY = Math.max(maxY, point.y);
+        });
+        
+        return { minX, minY, maxX, maxY };
     }
     
     update(deltaTime) {
@@ -138,19 +297,12 @@ class GameMap {
     }
     
     drawBaseMap(ctx) {
-        // Draw main map background
+        // Draw main map background with single shade of blue
         if (this.assets.map) {
             ctx.drawImage(this.assets.map, 0, 0);
         } else {
-            // Enhanced gradient background for massive ocean
-            const gradient = ctx.createRadialGradient(5120, 3840, 1000, 5120, 3840, 6000);
-            gradient.addColorStop(0, '#0c2d6b'); // Deep blue
-            gradient.addColorStop(0.2, '#1e3a5f'); // Dark blue
-            gradient.addColorStop(0.4, '#2980b9'); // Medium blue
-            gradient.addColorStop(0.7, '#3498db'); // Light blue
-            gradient.addColorStop(0.9, '#5dade2'); // Very light blue
-            gradient.addColorStop(1, '#85c1e9'); // Near surface blue
-            ctx.fillStyle = gradient;
+            // Single shade ocean background
+            ctx.fillStyle = '#2980b9'; // Medium blue - single shade
             ctx.fillRect(0, 0, this.width, this.height);
         }
     }
@@ -230,50 +382,13 @@ class GameMap {
     }
     
     getDepthLighting(x, y) {
-        // Calculate lighting based on distance from islands (lighter near islands)
-        let minDistance = Infinity;
-        
-        this.islands.forEach(island => {
-            const distance = Math.sqrt(
-                Math.pow(x - island.x, 2) + Math.pow(y - island.y, 2)
-            );
-            minDistance = Math.min(minDistance, distance);
-        });
-        
-        // Create lighting effect: brighter near islands, darker in deep water
-        const maxLightDistance = 300; // Increased for bigger map
-        const lightingFactor = Math.max(0.3, Math.min(1.5, 1.5 - (minDistance / maxLightDistance)));
-        
-        return lightingFactor;
+        // Return constant lighting - no depth effects
+        return 1.0;
     }
     
     drawIslandsOverlay(ctx) {
-        // Enhanced island rendering with island images
+        // Simple island rendering with island images - no lighting effects
         this.islands.forEach(island => {
-            // Draw depth transitions (lighter water near islands)
-            this.drawIslandDepthTransition(ctx, island);
-            
-            // Draw sandy seashore
-            this.drawIslandSeashore(ctx, island);
-            
-            // Draw island shadow in water
-            if (island.image) {
-                ctx.save();
-                ctx.globalAlpha = 0.1;
-                ctx.drawImage(
-                    island.image,
-                    island.x - island.radius + 3,
-                    island.y - island.radius + 3,
-                    island.radius * 2,
-                    island.radius * 2
-                );
-                ctx.restore();
-            } else {
-                // Fallback shadow
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-                this.drawIslandShape(ctx, island, 3, 3);
-            }
-            
             // Draw island image
             if (island.image) {
                 ctx.drawImage(
@@ -321,47 +436,7 @@ class GameMap {
         }
     }
     
-    drawIslandDepthTransition(ctx, island) {
-        // Create smooth depth transition using continuous gradient
-        const maxDepthDistance = 180; // Distance where depth effect fades
-        
-        // Create a single smooth gradient for depth transition
-        const depthGradient = ctx.createRadialGradient(
-            island.x, island.y, island.radius,
-            island.x, island.y, island.radius + maxDepthDistance
-        );
-        
-        // Smooth color transition from turquoise to deep blue
-        depthGradient.addColorStop(0, 'rgba(64, 200, 220, 0.12)'); // Light turquoise
-        depthGradient.addColorStop(0.3, 'rgba(74, 190, 210, 0.08)'); // Medium turquoise
-        depthGradient.addColorStop(0.6, 'rgba(84, 180, 200, 0.05)'); // Dark turquoise
-        depthGradient.addColorStop(0.8, 'rgba(89, 170, 190, 0.03)'); // Very dark turquoise
-        depthGradient.addColorStop(1, 'rgba(94, 160, 160, 0.01)'); // Deep blue (almost transparent)
-        
-        ctx.fillStyle = depthGradient;
-        ctx.beginPath();
-        ctx.arc(island.x, island.y, island.radius + maxDepthDistance, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    
-    drawIslandSeashore(ctx, island) {
-        // Draw static sandy seashore around islands (no movable texture)
-        const shoreWidth = 18; // Width of sandy shore
-        
-        // Sandy shore gradient (static, no texture lines)
-        const shoreGradient = ctx.createRadialGradient(
-            island.x, island.y, island.radius,
-            island.x, island.y, island.radius + shoreWidth
-        );
-        shoreGradient.addColorStop(0, 'rgba(238, 203, 173, 0.7)'); // Sand color
-        shoreGradient.addColorStop(0.6, 'rgba(238, 203, 173, 0.3)'); // Fading sand
-        shoreGradient.addColorStop(1, 'rgba(238, 203, 173, 0.0)'); // Transparent
-        
-        ctx.fillStyle = shoreGradient;
-        ctx.beginPath();
-        ctx.arc(island.x, island.y, island.radius + shoreWidth, 0, Math.PI * 2);
-        ctx.fill();
-    }
+
     
     drawRealisticIslandWakes(ctx, island) {
         // Removed dashed wake rings - keeping only the depth transitions
@@ -388,31 +463,121 @@ class GameMap {
     
     checkIslandCollision(x, y, radius = 32) {
         for (let island of this.islands) {
-            let distance;
-            
-            if (island.points) {
-                // Check collision with irregular shape using point-to-polygon distance
-                distance = this.getDistanceToPolygon(x, y, island);
-            } else {
-                // Fallback to circle collision for backward compatibility
-                distance = Math.sqrt(
-                    Math.pow(x - island.x, 2) + Math.pow(y - island.y, 2)
-                );
+            // Quick bounding box check first
+            if (island.outline && island.outline.bounds) {
+                const bounds = island.outline.bounds;
+                const shipLeft = x - radius;
+                const shipRight = x + radius;
+                const shipTop = y - radius;
+                const shipBottom = y + radius;
+                
+                const islandLeft = island.x + bounds.minX;
+                const islandRight = island.x + bounds.maxX;
+                const islandTop = island.y + bounds.minY;
+                const islandBottom = island.y + bounds.maxY;
+                
+                // If no overlap in bounding boxes, no collision
+                if (shipRight < islandLeft || shipLeft > islandRight || 
+                    shipBottom < islandTop || shipTop > islandBottom) {
+                    continue;
+                }
             }
             
-            if (distance < island.radius + radius) {
-                return {
-                    collision: true,
-                    island: island,
-                    distance: distance,
-                    pushX: (x - island.x) / distance,
-                    pushY: (y - island.y) / distance
-                };
+            // Use outline-based collision detection
+            if (island.outline && island.outline.points) {
+                const collision = this.checkOutlineCollision(x, y, radius, island);
+                if (collision.collision) {
+                    return collision;
+                }
+            } else {
+                // Fallback to circular collision
+                const distance = Math.sqrt(
+                    Math.pow(x - island.x, 2) + Math.pow(y - island.y, 2)
+                );
+                
+                const collisionDistance = island.radius + radius;
+                
+                if (distance < collisionDistance) {
+                    return {
+                        collision: true,
+                        island: island,
+                        distance: distance,
+                        pushX: (x - island.x) / distance,
+                        pushY: (y - island.y) / distance
+                    };
+                }
             }
         }
         
         return { collision: false };
     }
+    
+    checkOutlineCollision(shipX, shipY, shipRadius, island) {
+        // Convert ship position to island's local coordinate system
+        const localX = shipX - island.x;
+        const localY = shipY - island.y;
+        
+        // Find the closest point on the island outline to the ship
+        let closestDistance = Infinity;
+        let closestPoint = null;
+        
+        // Check if we have valid outline points
+        if (!island.outline || !island.outline.points || island.outline.points.length === 0) {
+            console.warn('⚠️ No valid outline points for collision detection');
+            return { collision: false };
+        }
+        
+        // Find closest point on outline
+        for (let i = 0; i < island.outline.points.length; i++) {
+            const point = island.outline.points[i];
+            const distance = Math.sqrt(
+                Math.pow(localX - point.x, 2) + Math.pow(localY - point.y, 2)
+            );
+            
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestPoint = point;
+            }
+        }
+        
+        // Add a small buffer to make collision detection more responsive
+        const collisionBuffer = 10;
+        
+        // Check if ship is colliding with the outline
+        if (closestDistance < (shipRadius + collisionBuffer)) {
+            // Calculate push direction from closest point to ship
+            const pushX = (localX - closestPoint.x) / closestDistance;
+            const pushY = (localY - closestPoint.y) / closestDistance;
+            
+            // Debug logging in debug mode
+            if (window.DEBUG_MODE) {
+                console.log('🚢 Outline collision detected:', {
+                    shipPos: { x: shipX, y: shipY },
+                    closestPoint: { x: island.x + closestPoint.x, y: island.y + closestPoint.y },
+                    distance: closestDistance,
+                    shipRadius: shipRadius,
+                    collisionBuffer: collisionBuffer,
+                    pushDirection: { x: pushX, y: pushY }
+                });
+            }
+            
+            return {
+                collision: true,
+                island: island,
+                distance: closestDistance,
+                pushX: pushX,
+                pushY: pushY,
+                closestPoint: {
+                    x: island.x + closestPoint.x,
+                    y: island.y + closestPoint.y
+                }
+            };
+        }
+        
+        return { collision: false };
+    }
+    
+
     
     getDistanceToPolygon(x, y, island) {
         // Calculate distance from point to irregular polygon
@@ -507,18 +672,78 @@ class GameMap {
                        this.bounds.right - this.bounds.left, 
                        this.bounds.bottom - this.bounds.top);
         
-        // Display islands
-        ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+        // Display islands with actual outline collision boundaries
         this.islands.forEach(island => {
-            ctx.beginPath();
-            ctx.arc(island.x, island.y, island.radius, 0, Math.PI * 2);
-            ctx.fill();
+            if (island.outline && island.outline.points) {
+                // Draw actual island outline (red line)
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.9)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                
+                const firstPoint = island.outline.points[0];
+                ctx.moveTo(island.x + firstPoint.x, island.y + firstPoint.y);
+                
+                for (let i = 1; i < island.outline.points.length; i++) {
+                    const point = island.outline.points[i];
+                    ctx.lineTo(island.x + point.x, island.y + point.y);
+                }
+                
+                // Close the outline
+                ctx.lineTo(island.x + firstPoint.x, island.y + firstPoint.y);
+                ctx.stroke();
+                
+                // Draw outline points (small dots)
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                island.outline.points.forEach(point => {
+                    ctx.beginPath();
+                    ctx.arc(island.x + point.x, island.y + point.y, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                
+                // Draw collision buffer zone (yellow dashed line)
+                ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                
+                island.outline.points.forEach((point, index) => {
+                    const x = island.x + point.x;
+                    const y = island.y + point.y;
+                    
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                
+                // Close the buffer zone
+                const firstPointBuffer = island.outline.points[0];
+                ctx.lineTo(island.x + firstPointBuffer.x, island.y + firstPointBuffer.y);
+                ctx.stroke();
+                ctx.setLineDash([]); // Reset line dash
+                
+            } else {
+                // Fallback to circular boundary
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(island.x, island.y, island.radius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
             
             // Island labels
             ctx.fillStyle = 'white';
             ctx.font = '12px monospace';
-            ctx.fillText(`R:${island.radius}`, island.x - 20, island.y - island.radius - 10);
-            ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+            ctx.fillText(`Outline Points: ${island.outline ? island.outline.points.length : 'N/A'}`, 
+                        island.x - 40, island.y - island.radius - 10);
+            
+            // Show collision type
+            if (island.outline && island.outline.points && island.outline.points.length > 0) {
+                ctx.fillText(`Collision: Outline`, island.x - 30, island.y - island.radius - 25);
+            } else {
+                ctx.fillText(`Collision: Circular`, island.x - 30, island.y - island.radius - 25);
+            }
         });
         
         // Display wave info
@@ -526,5 +751,10 @@ class GameMap {
         ctx.font = '12px monospace';
         ctx.fillText(`Wave Time: ${this.waveTime.toFixed(2)}`, 10, 20);
         ctx.fillText(`Wave Layers: ${this.waveLayers.length}`, 10, 35);
+        
+        // Display collision system info
+        ctx.fillText(`Collision System: ${this.islands[0].outline && this.islands[0].outline.points ? 'Outline' : 'Circular'}`, 10, 50);
+        ctx.fillText(`Outline Points: ${this.islands[0].outline ? this.islands[0].outline.points.length : 'N/A'}`, 10, 65);
+        ctx.fillText(`Collision Buffer: 10px`, 10, 80);
     }
 } 

@@ -170,19 +170,21 @@ class Ship {
             this.currentSpeed *= 0.5; // reduce speed on edge collision
         }
         
-        // Check island collisions with a smaller collision radius to prevent getting stuck
-        const collisionRadius = this.radius * 0.8; // Use 80% of ship radius for collision detection
-        const islandCollision = map.checkIslandCollision(this.x, this.y, collisionRadius);
+        // Check island collisions with outline-based detection
+        const islandCollision = map.checkIslandCollision(this.x, this.y, this.radius);
         if (islandCollision.collision) {
-            // Push away from island with more force
-            const pushForce = 100;
-            this.x += islandCollision.pushX * pushForce * 0.016; // 0.016 ≈ deltaTime
-            this.y += islandCollision.pushY * pushForce * 0.016;
+            // Calculate push distance based on collision depth
+            const pushDistance = this.radius - islandCollision.distance;
             
-            // Reduce speed on collision but not as much
-            this.currentSpeed *= 0.5;
+            // Push away from island outline with smooth force
+            const pushForce = Math.min(pushDistance * 3, 60); // Slightly higher force for outline collision
+            this.x += islandCollision.pushX * pushForce;
+            this.y += islandCollision.pushY * pushForce;
             
-            // Constrain position within map after push
+            // Reduce speed on collision for more realistic physics
+            this.currentSpeed *= 0.4;
+            
+            // Ensure ship doesn't get pushed into another collision
             const newConstrainedPos = map.getConstrainedPosition(this.x, this.y, this.radius);
             this.x = newConstrainedPos.x;
             this.y = newConstrainedPos.y;

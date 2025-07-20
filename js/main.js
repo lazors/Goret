@@ -180,12 +180,8 @@ class Game {
             const ctx = canvas.getContext('2d');
             
             if (assetInfo.key === 'map') {
-                // Create gradient map without islands - 10x bigger
-                const gradient = ctx.createRadialGradient(5120, 3840, 1000, 5120, 3840, 4000);
-                gradient.addColorStop(0, '#2980b9');
-                gradient.addColorStop(0.5, '#3498db');
-                gradient.addColorStop(1, '#1e3a5f');
-                ctx.fillStyle = gradient;
+                // Create single shade map background - 10x bigger
+                ctx.fillStyle = '#2980b9'; // Same single shade as map.js
                 ctx.fillRect(0, 0, 10240, 7680);
             } else if (assetInfo.key === 'ship') {
                 // Simple ship sprite
