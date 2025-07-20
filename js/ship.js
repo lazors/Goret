@@ -39,9 +39,11 @@ class Ship {
         this.vTrailThickness = 2; // V-trail line thickness
         
         // SMOOTH TURNING SETTINGS
-        this.trailSmoothingFactor = 0.15; // How quickly trails adapt to new angles (0.1 = slow, 0.3 = fast)
-        this.maxTrailAngleChange = Math.PI / 4; // Maximum angle change per frame (prevents snapping)
+        this.trailSmoothingFactor = 0.08; // Slower smoothing for more gradual angle changes (0.05 = very slow, 0.15 = fast)
+        this.maxTrailAngleChange = Math.PI / 6; // Smaller maximum angle change per frame (prevents sharp snapping)
         this.previousShipAngle = this.angle - Math.PI/2; // Track previous angle for smoothing
+        this.angleHistory = []; // Store recent angles for smoother interpolation
+        this.maxAngleHistory = 5; // Number of recent angles to average
         
         // Ship state
         this.isMovingForward = false;
@@ -204,24 +206,12 @@ class Ship {
         // Always update V-shaped trail positioning (even when not adding new points)
         // This maintains the trail shape when speed drops below threshold
         
-        // SMOOTH ANGLE INTERPOLATION FOR TURNS
+        // FLEXIBLE V-TRAIL POSITIONING (similar to main wake trail)
         const currentShipAngle = this.angle - Math.PI/2;
         
-        // Calculate angle difference for smooth interpolation
-        let angleDiff = currentShipAngle - this.previousShipAngle;
-        
-        // Handle angle wrapping (when crossing 0/2π boundary)
-        if (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-        if (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-        
-        // Limit maximum angle change per frame to prevent snapping
-        if (Math.abs(angleDiff) > this.maxTrailAngleChange) {
-            angleDiff = Math.sign(angleDiff) * this.maxTrailAngleChange;
-        }
-        
-        // Smoothly interpolate the angle
-        const smoothedAngle = this.previousShipAngle + (angleDiff * this.trailSmoothingFactor);
-        this.previousShipAngle = smoothedAngle;
+        // Use current ship angle directly for more responsive movement
+        // This gives V-trails the same flexibility as the main wake trail
+        const smoothedAngle = currentShipAngle;
         
         // Add V-shaped bow wave trail only when speed is over 140
         if (this.currentSpeed > 140) {
@@ -244,7 +234,7 @@ class Ship {
             const starboardX = this.x + Math.cos(shipAngle - Math.PI/2) * edgeOffset + Math.cos(shipAngle) * sideOffset;
             const starboardY = this.y + Math.sin(shipAngle - Math.PI/2) * edgeOffset + Math.sin(shipAngle) * sideOffset;
             
-            // Add bow wave trail points with smoothed angle
+            // Add bow wave trail points with current ship state
             this.bowWaveTrail.push({
                 portX: portX,
                 portY: portY,
@@ -252,10 +242,15 @@ class Ship {
                 starboardY: starboardY,
                 age: 0,
                 opacity: 1.0,
-                shipAngle: smoothedAngle, // Store the smoothed angle for drawing
-                speedGenerated: this.currentSpeed, // Store the speed when generated
-                shipX: this.x, // Store ship position when created
-                shipY: this.y
+                shipAngle: smoothedAngle, // Store current ship angle
+                speedGenerated: this.currentSpeed,
+                shipX: this.x,
+                shipY: this.y,
+                // Store trail end positions for flexible movement
+                portEndX: portX - Math.cos(smoothedAngle) * this.vTrailBaseLength + Math.cos(smoothedAngle + Math.PI/2) * (this.vTrailBaseLength * this.vTrailSpread),
+                portEndY: portY - Math.sin(smoothedAngle) * this.vTrailBaseLength + Math.sin(smoothedAngle + Math.PI/2) * (this.vTrailBaseLength * this.vTrailSpread),
+                starboardEndX: starboardX - Math.cos(smoothedAngle) * this.vTrailBaseLength - Math.cos(smoothedAngle + Math.PI/2) * (this.vTrailBaseLength * this.vTrailSpread),
+                starboardEndY: starboardY - Math.sin(smoothedAngle) * this.vTrailBaseLength - Math.sin(smoothedAngle + Math.PI/2) * (this.vTrailBaseLength * this.vTrailSpread)
             });
         }
         
@@ -360,31 +355,11 @@ class Ship {
                 // Use the stored smoothed angle for this trail segment
                 const shipAngle = currentPoint.shipAngle || (this.angle - Math.PI/2);
                 
-                // Calculate trail length based on distance from ship and fade progress
-                const baseTrailLength = this.vTrailBaseLength + (i * this.vTrailLengthGrowth);
-                
-                // Shrink trail length as it fades (maintains connection to ship)
-                const fadeProgress = currentPoint.age / (this.currentSpeed <= 150 ? 0.35 : 0.5);
-                const shrinkFactor = Math.max(0.1, 1.0 - (fadeProgress * 0.8)); // Shrink to 10% of original size
-                const trailLength = baseTrailLength * shrinkFactor;
-                
-                // V-TRAIL LENGTH IS NOW CONTROLLED BY:
-                // - this.vTrailBaseLength (base length in pixels)
-                // - this.vTrailLengthGrowth (length increase per segment)
-                // - shrinkFactor (shrinks as trail fades)
-                
-                // ===== V-TRAIL DIRECTION CALCULATION =====
-                // This controls which direction the V-trails point
-                
-                // Port side wave trail - SIMPLIFIED BACKWARD CALCULATION
-                const portEndX = currentPoint.portX - Math.cos(shipAngle) * trailLength + Math.cos(shipAngle + Math.PI/2) * (trailLength * this.vTrailSpread);
-                const portEndY = currentPoint.portY - Math.sin(shipAngle) * trailLength + Math.sin(shipAngle + Math.PI/2) * (trailLength * this.vTrailSpread);
-                // V-TRAIL SPREAD IS NOW CONTROLLED BY: this.vTrailSpread
-                
-                // Starboard side wave trail - SIMPLIFIED BACKWARD CALCULATION
-                const starboardEndX = currentPoint.starboardX - Math.cos(shipAngle) * trailLength - Math.cos(shipAngle + Math.PI/2) * (trailLength * this.vTrailSpread);
-                const starboardEndY = currentPoint.starboardY - Math.sin(shipAngle) * trailLength - Math.sin(shipAngle + Math.PI/2) * (trailLength * this.vTrailSpread);
-                // Note the minus sign before Math.cos(shipAngle + Math.PI/2) - this creates the V-shape
+                // Use stored trail end positions for flexible movement (like main wake trail)
+                const portEndX = currentPoint.portEndX || (currentPoint.portX - Math.cos(shipAngle) * this.vTrailBaseLength + Math.cos(shipAngle + Math.PI/2) * (this.vTrailBaseLength * this.vTrailSpread));
+                const portEndY = currentPoint.portEndY || (currentPoint.portY - Math.sin(shipAngle) * this.vTrailBaseLength + Math.sin(shipAngle + Math.PI/2) * (this.vTrailBaseLength * this.vTrailSpread));
+                const starboardEndX = currentPoint.starboardEndX || (currentPoint.starboardX - Math.cos(shipAngle) * this.vTrailBaseLength - Math.cos(shipAngle + Math.PI/2) * (this.vTrailBaseLength * this.vTrailSpread));
+                const starboardEndY = currentPoint.starboardEndY || (currentPoint.starboardY - Math.sin(shipAngle) * this.vTrailBaseLength - Math.sin(shipAngle + Math.PI/2) * (this.vTrailBaseLength * this.vTrailSpread));
                 
                 // ===== V-TRAIL VISUAL PROPERTIES =====
                 // This controls the appearance of the V-trails
