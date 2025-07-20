@@ -199,29 +199,32 @@ class Ship {
                 age: 0,
                 opacity: 1.0
             });
-            
-            // ===== SMOOTH V-SHAPED TRAIL POSITIONING CODE =====
-            // This section controls WHERE the V-trails originate from on the ship
-            
-            // SMOOTH ANGLE INTERPOLATION FOR TURNS
-            const currentShipAngle = this.angle - Math.PI/2;
-            
-            // Calculate angle difference for smooth interpolation
-            let angleDiff = currentShipAngle - this.previousShipAngle;
-            
-            // Handle angle wrapping (when crossing 0/2π boundary)
-            if (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-            if (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-            
-            // Limit maximum angle change per frame to prevent snapping
-            if (Math.abs(angleDiff) > this.maxTrailAngleChange) {
-                angleDiff = Math.sign(angleDiff) * this.maxTrailAngleChange;
-            }
-            
-            // Smoothly interpolate the angle
-            const smoothedAngle = this.previousShipAngle + (angleDiff * this.trailSmoothingFactor);
-            this.previousShipAngle = smoothedAngle;
-            
+        }
+        
+        // Always update V-shaped trail positioning (even when not adding new points)
+        // This maintains the trail shape when speed drops below threshold
+        
+        // SMOOTH ANGLE INTERPOLATION FOR TURNS
+        const currentShipAngle = this.angle - Math.PI/2;
+        
+        // Calculate angle difference for smooth interpolation
+        let angleDiff = currentShipAngle - this.previousShipAngle;
+        
+        // Handle angle wrapping (when crossing 0/2π boundary)
+        if (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        if (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+        
+        // Limit maximum angle change per frame to prevent snapping
+        if (Math.abs(angleDiff) > this.maxTrailAngleChange) {
+            angleDiff = Math.sign(angleDiff) * this.maxTrailAngleChange;
+        }
+        
+        // Smoothly interpolate the angle
+        const smoothedAngle = this.previousShipAngle + (angleDiff * this.trailSmoothingFactor);
+        this.previousShipAngle = smoothedAngle;
+        
+        // Add V-shaped bow wave trail only when speed is over 140
+        if (this.currentSpeed > 140) {
             // Add bow wave trail points from ship MID-SECTION sides
             const shipAngle = smoothedAngle; // Use smoothed angle for trail positioning
             const edgeOffset = this.width / 3; // Distance from ship center to edge
@@ -249,7 +252,10 @@ class Ship {
                 starboardY: starboardY,
                 age: 0,
                 opacity: 1.0,
-                shipAngle: smoothedAngle // Store the smoothed angle for drawing
+                shipAngle: smoothedAngle, // Store the smoothed angle for drawing
+                speedGenerated: this.currentSpeed, // Store the speed when generated
+                shipX: this.x, // Store ship position when created
+                shipY: this.y
             });
         }
         
@@ -263,10 +269,17 @@ class Ship {
         // Update and remove old bow wave trail points
         this.bowWaveTrail = this.bowWaveTrail.filter(point => {
             point.age += 0.016; // approximate deltaTime
+            
+            // Faster fade when ship speed is below 150 (trails disappear quickly when slowing)
+            let fadeDuration = 0.5; // default fade duration
+            if (this.currentSpeed <= 150) {
+                fadeDuration = 0.3; // much faster fade when speed drops below 150
+            }
+            
             // Smooth fade using quadratic easing for more gradual transparency
-            const fadeProgress = point.age / 0.5;
+            const fadeProgress = point.age / fadeDuration;
             point.opacity = Math.max(0, 1.0 - (fadeProgress * fadeProgress)); // smooth quadratic fade
-            return point.age < 0.5;
+            return point.age < fadeDuration;
         });
         
         // Limit wake length
@@ -347,11 +360,18 @@ class Ship {
                 // Use the stored smoothed angle for this trail segment
                 const shipAngle = currentPoint.shipAngle || (this.angle - Math.PI/2);
                 
-                // Calculate trail length based on distance from ship
-                const trailLength = this.vTrailBaseLength + (i * this.vTrailLengthGrowth);
+                // Calculate trail length based on distance from ship and fade progress
+                const baseTrailLength = this.vTrailBaseLength + (i * this.vTrailLengthGrowth);
+                
+                // Shrink trail length as it fades (maintains connection to ship)
+                const fadeProgress = currentPoint.age / (this.currentSpeed <= 150 ? 0.35 : 0.5);
+                const shrinkFactor = Math.max(0.1, 1.0 - (fadeProgress * 0.8)); // Shrink to 10% of original size
+                const trailLength = baseTrailLength * shrinkFactor;
+                
                 // V-TRAIL LENGTH IS NOW CONTROLLED BY:
                 // - this.vTrailBaseLength (base length in pixels)
                 // - this.vTrailLengthGrowth (length increase per segment)
+                // - shrinkFactor (shrinks as trail fades)
                 
                 // ===== V-TRAIL DIRECTION CALCULATION =====
                 // This controls which direction the V-trails point
@@ -372,15 +392,26 @@ class Ship {
                 // Draw the wave trails with gradient opacity from ship to end
                 const gradientSteps = 8; // Number of segments for smooth gradient
                 
-                // Port trail with gradient
+                // Calculate current ship connection points (trails always follow ship)
+                const currentShipAngle = this.angle - Math.PI/2;
+                const edgeOffset = this.width / 3;
+                const sideOffset = -this.height / 2;
+                
+                // Current ship connection points
+                const currentPortX = this.x + Math.cos(currentShipAngle + Math.PI/2) * edgeOffset + Math.cos(currentShipAngle) * sideOffset;
+                const currentPortY = this.y + Math.sin(currentShipAngle + Math.PI/2) * edgeOffset + Math.sin(currentShipAngle) * sideOffset;
+                const currentStarboardX = this.x + Math.cos(currentShipAngle - Math.PI/2) * edgeOffset + Math.cos(currentShipAngle) * sideOffset;
+                const currentStarboardY = this.y + Math.sin(currentShipAngle - Math.PI/2) * edgeOffset + Math.sin(currentShipAngle) * sideOffset;
+                
+                // Port trail with gradient - always connected to current ship position
                 for (let step = 0; step < gradientSteps; step++) {
                     const t1 = step / gradientSteps;
                     const t2 = (step + 1) / gradientSteps;
                     
-                    const startX = currentPoint.portX + (portEndX - currentPoint.portX) * t1;
-                    const startY = currentPoint.portY + (portEndY - currentPoint.portY) * t1;
-                    const endX = currentPoint.portX + (portEndX - currentPoint.portX) * t2;
-                    const endY = currentPoint.portY + (portEndY - currentPoint.portY) * t2;
+                    const startX = currentPortX + (portEndX - currentPortX) * t1;
+                    const startY = currentPortY + (portEndY - currentPortY) * t1;
+                    const endX = currentPortX + (portEndX - currentPortX) * t2;
+                    const endY = currentPortY + (portEndY - currentPortY) * t2;
                     
                     // Gradient opacity: full at ship end, fading towards trail end
                     const segmentOpacity = currentPoint.opacity * this.vTrailOpacity * (1.0 - t1);
@@ -393,15 +424,15 @@ class Ship {
                     ctx.stroke();
                 }
                 
-                // Starboard trail with gradient
+                // Starboard trail with gradient - always connected to current ship position
                 for (let step = 0; step < gradientSteps; step++) {
                     const t1 = step / gradientSteps;
                     const t2 = (step + 1) / gradientSteps;
                     
-                    const startX = currentPoint.starboardX + (starboardEndX - currentPoint.starboardX) * t1;
-                    const startY = currentPoint.starboardY + (starboardEndY - currentPoint.starboardY) * t1;
-                    const endX = currentPoint.starboardX + (starboardEndX - currentPoint.starboardX) * t2;
-                    const endY = currentPoint.starboardY + (starboardEndY - currentPoint.starboardY) * t2;
+                    const startX = currentStarboardX + (starboardEndX - currentStarboardX) * t1;
+                    const startY = currentStarboardY + (starboardEndY - currentStarboardY) * t1;
+                    const endX = currentStarboardX + (starboardEndX - currentStarboardX) * t2;
+                    const endY = currentStarboardY + (starboardEndY - currentStarboardY) * t2;
                     
                     // Gradient opacity: full at ship end, fading towards trail end
                     const segmentOpacity = currentPoint.opacity * this.vTrailOpacity * (1.0 - t1);
