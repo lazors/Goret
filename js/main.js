@@ -19,6 +19,18 @@ class Game {
         this.totalAssets = 0;
         this.keys = {};
         
+        // Zoom system
+        this.zoom = 1.0;
+        this.minZoom = 0.3;
+        this.maxZoom = 3.0;
+        this.zoomSpeed = 0.1;
+        this.targetZoom = 1.0;
+        this.zoomSmoothness = 0.1;
+        
+        // Camera position (for future panning)
+        this.cameraX = 0;
+        this.cameraY = 0;
+        
         // Time and FPS
         this.lastTime = 0;
         this.deltaTime = 0;
@@ -79,10 +91,27 @@ class Game {
             if (e.code === 'Escape') {
                 this.togglePause();
             }
+            
+            // Zoom controls
+            if (e.code === 'NumpadAdd' || e.code === 'Equal') {
+                this.zoomIn();
+            }
+            if (e.code === 'NumpadSubtract' || e.code === 'Minus') {
+                this.zoomOut();
+            }
+            if (e.code === 'Digit0') {
+                this.resetZoom();
+            }
         });
         
         window.addEventListener('keyup', (e) => {
             this.keys[e.code] = false;
+        });
+        
+        // Mouse wheel zoom
+        this.canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            this.handleWheelZoom(e);
         });
         
         // Focus loss handling
@@ -255,21 +284,42 @@ class Game {
     }
     
     update() {
-        if (this.ship && this.map) {
-            // Update ship considering map boundaries
-            this.ship.update(this.deltaTime, this.keys, this.map);
-            
-            // Update map (wave animation)
+        if (this.gameState !== 'playing') return;
+        
+        // Update zoom
+        this.updateZoom();
+        
+        // Update map
+        if (this.map) {
             this.map.update(this.deltaTime);
-            
-            // Update UI
-            this.updateHUD();
         }
+        
+        // Update ship
+        if (this.ship) {
+            this.ship.update(this.deltaTime, this.keys, this.map);
+        }
+        
+        // Update HUD
+        this.updateHUD();
     }
     
     render() {
         // Clear canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Apply zoom and center on ship
+        this.ctx.save();
+        
+        // Center the view on the ship
+        if (this.ship) {
+            this.cameraX = this.ship.x;
+            this.cameraY = this.ship.y;
+        }
+        
+        // Apply transformations: center, zoom, then offset to ship position
+        this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+        this.ctx.scale(this.zoom, this.zoom);
+        this.ctx.translate(-this.cameraX, -this.cameraY);
         
         // Render map
         if (this.map) {
@@ -285,6 +335,8 @@ class Game {
         if (window.DEBUG_MODE) {
             this.drawDebugInfo();
         }
+        
+        this.ctx.restore();
     }
     
     updateHUD() {
@@ -292,6 +344,12 @@ class Game {
             const info = this.ship.getInfo();
             this.speedValue.textContent = Math.abs(info.speed);
             this.directionValue.textContent = info.direction;
+        }
+        
+        // Update zoom indicator if it exists
+        const zoomIndicator = document.getElementById('zoomValue');
+        if (zoomIndicator) {
+            zoomIndicator.textContent = `${(this.zoom * 100).toFixed(0)}%`;
         }
     }
     
@@ -356,8 +414,32 @@ class Game {
     }
     
     handleResize() {
-        // Handle window resize if needed
-        console.log('🔄 Window resized');
+        // Handle window resize
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    }
+    
+    // Zoom methods
+    zoomIn() {
+        this.targetZoom = Math.min(this.maxZoom, this.targetZoom + this.zoomSpeed);
+    }
+    
+    zoomOut() {
+        this.targetZoom = Math.max(this.minZoom, this.targetZoom - this.zoomSpeed);
+    }
+    
+    resetZoom() {
+        this.targetZoom = 1.0;
+    }
+    
+    handleWheelZoom(e) {
+        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+        this.targetZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.targetZoom * zoomFactor));
+    }
+    
+    updateZoom() {
+        // Smooth zoom interpolation
+        this.zoom += (this.targetZoom - this.zoom) * this.zoomSmoothness;
     }
 }
 
