@@ -256,15 +256,17 @@ class Ship {
         // Update and remove old wake points
         this.wakeTrail = this.wakeTrail.filter(point => {
             point.age += 0.016; // approximate deltaTime
-            point.opacity = Math.max(0, 1.0 - (point.age / 3)); // fade over 3 seconds
-            return point.age < 3;
+            point.opacity = Math.max(0, 1.0 - (point.age / 1.5)); // fade over 1.5 seconds (faster)
+            return point.age < 1.5;
         });
         
         // Update and remove old bow wave trail points
         this.bowWaveTrail = this.bowWaveTrail.filter(point => {
             point.age += 0.016; // approximate deltaTime
-            point.opacity = Math.max(0, 1.0 - (point.age / 2)); // fade over 2 seconds
-            return point.age < 2;
+            // Smooth fade using quadratic easing for more gradual transparency
+            const fadeProgress = point.age / 0.5;
+            point.opacity = Math.max(0, 1.0 - (fadeProgress * fadeProgress)); // smooth quadratic fade
+            return point.age < 0.5;
         });
         
         // Limit wake length
@@ -367,24 +369,50 @@ class Ship {
                 // ===== V-TRAIL VISUAL PROPERTIES =====
                 // This controls the appearance of the V-trails
                 
-                // Draw the wave trails with fading opacity
-                ctx.strokeStyle = `rgba(255, 255, 255, ${currentPoint.opacity * this.vTrailOpacity})`;
-                ctx.lineWidth = this.vTrailThickness * currentPoint.opacity;
-                // V-TRAIL APPEARANCE IS NOW CONTROLLED BY:
-                // - this.vTrailOpacity (0.0 = invisible, 1.0 = fully opaque)
-                // - this.vTrailThickness (line thickness in pixels)
+                // Draw the wave trails with gradient opacity from ship to end
+                const gradientSteps = 8; // Number of segments for smooth gradient
                 
-                // Port trail
-                ctx.beginPath();
-                ctx.moveTo(currentPoint.portX, currentPoint.portY);
-                ctx.lineTo(portEndX, portEndY);
-                ctx.stroke();
+                // Port trail with gradient
+                for (let step = 0; step < gradientSteps; step++) {
+                    const t1 = step / gradientSteps;
+                    const t2 = (step + 1) / gradientSteps;
+                    
+                    const startX = currentPoint.portX + (portEndX - currentPoint.portX) * t1;
+                    const startY = currentPoint.portY + (portEndY - currentPoint.portY) * t1;
+                    const endX = currentPoint.portX + (portEndX - currentPoint.portX) * t2;
+                    const endY = currentPoint.portY + (portEndY - currentPoint.portY) * t2;
+                    
+                    // Gradient opacity: full at ship end, fading towards trail end
+                    const segmentOpacity = currentPoint.opacity * this.vTrailOpacity * (1.0 - t1);
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${segmentOpacity})`;
+                    ctx.lineWidth = this.vTrailThickness * segmentOpacity;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+                }
                 
-                // Starboard trail
-                ctx.beginPath();
-                ctx.moveTo(currentPoint.starboardX, currentPoint.starboardY);
-                ctx.lineTo(starboardEndX, starboardEndY);
-                ctx.stroke();
+                // Starboard trail with gradient
+                for (let step = 0; step < gradientSteps; step++) {
+                    const t1 = step / gradientSteps;
+                    const t2 = (step + 1) / gradientSteps;
+                    
+                    const startX = currentPoint.starboardX + (starboardEndX - currentPoint.starboardX) * t1;
+                    const startY = currentPoint.starboardY + (starboardEndY - currentPoint.starboardY) * t1;
+                    const endX = currentPoint.starboardX + (starboardEndX - currentPoint.starboardX) * t2;
+                    const endY = currentPoint.starboardY + (starboardEndY - currentPoint.starboardY) * t2;
+                    
+                    // Gradient opacity: full at ship end, fading towards trail end
+                    const segmentOpacity = currentPoint.opacity * this.vTrailOpacity * (1.0 - t1);
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${segmentOpacity})`;
+                    ctx.lineWidth = this.vTrailThickness * segmentOpacity;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+                }
             }
         }
         
