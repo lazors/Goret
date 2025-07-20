@@ -1,6 +1,6 @@
 /**
  * Pirate Game - Map Module
- * Loading and rendering map with animated waves
+ * Loading and rendering map with realistic animated waves
  */
 
 class GameMap {
@@ -12,10 +12,13 @@ class GameMap {
         this.width = 1024;
         this.height = 768;
         
-        // Wave animation
-        this.waveOffset = 0;
-        this.waveSpeed = 20; // pixels per second
-        this.tileSize = 128; // wave tile size
+        // Enhanced wave system
+        this.waveLayers = [];
+        this.waveTime = 0;
+        this.waveSpeed = 0.5; // Time-based animation speed
+        
+        // Initialize multiple wave layers for realistic ocean
+        this.initializeWaveLayers();
         
         // Map boundaries for collisions
         this.bounds = {
@@ -33,25 +36,61 @@ class GameMap {
             { x: 800, y: 600, radius: 90 }
         ];
         
-        console.log('🗺️ Map initialized');
+        console.log('🗺️ Map initialized with enhanced wave system');
+    }
+    
+    initializeWaveLayers() {
+        // Create realistic ocean wave layers with actual wave patterns
+        this.waveLayers = [
+            {
+                // Primary ocean swells - large rolling waves
+                amplitude: 15,
+                frequency: 0.008,
+                speed: 0.15,
+                direction: { x: 1, y: 0.1 },
+                color: 'rgba(255, 255, 255, 0.08)',
+                thickness: 2,
+                type: 'swell'
+            },
+            {
+                // Secondary waves - medium wave patterns
+                amplitude: 10,
+                frequency: 0.012,
+                speed: 0.25,
+                direction: { x: -0.8, y: 0.4 },
+                color: 'rgba(255, 255, 255, 0.06)',
+                thickness: 1.5,
+                type: 'wave'
+            },
+            {
+                // Surface ripples - small wave details
+                amplitude: 6,
+                frequency: 0.02,
+                speed: 0.4,
+                direction: { x: 0.6, y: -0.5 },
+                color: 'rgba(255, 255, 255, 0.04)',
+                thickness: 1,
+                type: 'ripple'
+            }
+        ];
     }
     
     update(deltaTime) {
-        // Update wave animation
-        this.waveOffset += this.waveSpeed * deltaTime;
+        // Update wave animation time (continuous, never resets)
+        this.waveTime += this.waveSpeed * deltaTime;
         
-        // Reset offset to avoid overflow
-        if (this.waveOffset >= this.tileSize) {
-            this.waveOffset -= this.tileSize;
-        }
+        // Update each wave layer
+        this.waveLayers.forEach(layer => {
+            layer.currentTime = this.waveTime * layer.speed;
+        });
     }
     
     draw(ctx) {
         // Render base map
         this.drawBaseMap(ctx);
         
-        // Render animated waves
-        this.drawAnimatedWaves(ctx);
+        // Render realistic animated waves
+        this.drawRealisticWaves(ctx);
         
         // Render islands over waves
         this.drawIslandsOverlay(ctx);
@@ -62,82 +101,162 @@ class GameMap {
         if (this.assets.map) {
             ctx.drawImage(this.assets.map, 0, 0);
         } else {
-            // Fallback - gradient
-            const gradient = ctx.createRadialGradient(512, 384, 100, 512, 384, 400);
-            gradient.addColorStop(0, '#2980b9');
-            gradient.addColorStop(0.5, '#3498db');
-            gradient.addColorStop(1, '#1e3a5f');
+            // Enhanced gradient background for foam patterns
+            const gradient = ctx.createRadialGradient(512, 384, 100, 512, 384, 600);
+            gradient.addColorStop(0, '#0c2d6b'); // Deep blue
+            gradient.addColorStop(0.2, '#1e3a5f'); // Dark blue
+            gradient.addColorStop(0.4, '#2980b9'); // Medium blue
+            gradient.addColorStop(0.7, '#3498db'); // Light blue
+            gradient.addColorStop(0.9, '#5dade2'); // Very light blue
+            gradient.addColorStop(1, '#85c1e9'); // Near surface blue
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, this.width, this.height);
         }
     }
     
-    drawAnimatedWaves(ctx) {
-        if (!this.assets.wave) return;
+    drawRealisticWaves(ctx) {
+        // Draw each wave layer from largest to smallest
+        for (let i = this.waveLayers.length - 1; i >= 0; i--) {
+            this.drawWaveLayer(ctx, this.waveLayers[i]);
+        }
+    }
+    
+    drawWaveLayer(ctx, layer) {
+        const { amplitude, frequency, direction, color, thickness, currentTime, type } = layer;
         
-        // Set transparency for waves
-        ctx.globalAlpha = 0.6;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = thickness;
+        ctx.lineCap = 'round';
         
-        // Calculate number of tiles
-        const tilesX = Math.ceil(this.width / this.tileSize) + 1;
-        const tilesY = Math.ceil(this.height / this.tileSize) + 1;
+        // Draw wave crests as curved lines
+        this.drawWaveCrests(ctx, amplitude, frequency, direction, currentTime, type);
+    }
+    
+    drawWaveCrests(ctx, amplitude, frequency, direction, time, type) {
+        // Draw multiple wave crests across the ocean
+        const crestSpacing = 80; // Distance between wave crests
+        const numCrests = Math.ceil(this.width / crestSpacing) + 4;
         
-        // Render wave tiles with animation
-        for (let y = 0; y < tilesY; y++) {
-            for (let x = 0; x < tilesX; x++) {
-                const drawX = (x * this.tileSize) - this.waveOffset;
-                const drawY = (y * this.tileSize) - (this.waveOffset * 0.5); // Different speed on Y
-                
-                ctx.drawImage(this.assets.wave, drawX, drawY);
+        for (let i = 0; i < numCrests; i++) {
+            const crestOffset = i * crestSpacing;
+            this.drawSingleWaveCrest(ctx, crestOffset, amplitude, frequency, direction, time, type);
+        }
+    }
+    
+    drawSingleWaveCrest(ctx, offset, amplitude, frequency, direction, time, type) {
+        ctx.beginPath();
+        
+        // Start and end points for the wave crest
+        const startX = -100;
+        const endX = this.width + 100;
+        const stepSize = 3;
+        
+        let firstPoint = true;
+        
+        for (let x = startX; x <= endX; x += stepSize) {
+            // Calculate wave position with realistic ocean physics
+            const wavePhase = frequency * (x * direction.x + offset * direction.y) + time;
+            
+            let y;
+            if (type === 'swell') {
+                // Large rolling ocean swells
+                y = Math.sin(wavePhase) * amplitude + 
+                    Math.sin(wavePhase * 0.7) * amplitude * 0.3;
+            } else if (type === 'wave') {
+                // Medium waves with more detail
+                y = Math.sin(wavePhase) * amplitude + 
+                    Math.sin(wavePhase * 1.3) * amplitude * 0.2 +
+                    Math.sin(wavePhase * 0.5) * amplitude * 0.1;
+            } else {
+                // Small ripples
+                y = Math.sin(wavePhase) * amplitude + 
+                    Math.sin(wavePhase * 2.1) * amplitude * 0.4;
+            }
+            
+            // Apply depth-based lighting (lighter near islands)
+            const depthLighting = this.getDepthLighting(x, y);
+            const adjustedY = y * depthLighting;
+            
+            // Add some vertical offset for wave positioning
+            const finalY = adjustedY + (offset * 0.3);
+            
+            if (firstPoint) {
+                ctx.moveTo(x, finalY);
+                firstPoint = false;
+            } else {
+                ctx.lineTo(x, finalY);
             }
         }
         
-        // Additional wave layer in opposite direction
-        ctx.globalAlpha = 0.3;
-        for (let y = 0; y < tilesY; y++) {
-            for (let x = 0; x < tilesX; x++) {
-                const drawX = (x * this.tileSize) + (this.waveOffset * 0.7); // Movement in opposite direction
-                const drawY = (y * this.tileSize) - (this.waveOffset * 0.3);
-                
-                ctx.drawImage(this.assets.wave, drawX, drawY);
-            }
-        }
+        ctx.stroke();
+    }
+    
+    getDepthLighting(x, y) {
+        // Calculate lighting based on distance from islands (lighter near islands)
+        let minDistance = Infinity;
         
-        // Restore normal transparency
-        ctx.globalAlpha = 1.0;
+        this.islands.forEach(island => {
+            const distance = Math.sqrt(
+                Math.pow(x - island.x, 2) + Math.pow(y - island.y, 2)
+            );
+            minDistance = Math.min(minDistance, distance);
+        });
+        
+        // Create lighting effect: brighter near islands, darker in deep water
+        const maxLightDistance = 150; // Distance where lighting effect fades
+        const lightingFactor = Math.max(0.3, Math.min(1.5, 1.5 - (minDistance / maxLightDistance)));
+        
+        return lightingFactor;
     }
     
     drawIslandsOverlay(ctx) {
-        // Additional island details over waves
-        ctx.fillStyle = 'rgba(139, 188, 143, 0.3)'; // Semi-transparent green
-        
+        // Enhanced island rendering with realistic water interaction
         this.islands.forEach(island => {
-            // Add semi-transparent effect around islands
+            // Island shadow in water
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
             ctx.beginPath();
-            ctx.arc(island.x, island.y, island.radius + 10, 0, Math.PI * 2);
+            ctx.arc(island.x + 3, island.y + 3, island.radius + 5, 0, Math.PI * 2);
             ctx.fill();
             
-            // Add waves around islands
-            this.drawIslandWakes(ctx, island);
+            // Island base
+            ctx.fillStyle = '#8fbc8f';
+            ctx.beginPath();
+            ctx.arc(island.x, island.y, island.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Island highlight
+            ctx.fillStyle = '#a8d5a8';
+            ctx.beginPath();
+            ctx.arc(island.x - 5, island.y - 5, island.radius - 10, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw realistic island wakes
+            this.drawRealisticIslandWakes(ctx, island);
         });
     }
     
-    drawIslandWakes(ctx, island) {
-        // Render wave trails around islands
-        const time = Date.now() * 0.001; // Time for animation
+    drawRealisticIslandWakes(ctx, island) {
+        const time = this.waveTime;
         
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.lineWidth = 2;
+        // Multiple wake rings with different properties
+        const wakeRings = [
+            { radius: 15, speed: 0.5, opacity: 0.3, thickness: 2 },
+            { radius: 25, speed: 0.3, opacity: 0.2, thickness: 1.5 },
+            { radius: 35, speed: 0.2, opacity: 0.15, thickness: 1 }
+        ];
         
-        for (let i = 0; i < 3; i++) {
-            const radius = island.radius + 15 + (i * 8) + Math.sin(time + i) * 3;
-            ctx.setLineDash([10, 10]);
-            ctx.lineDashOffset = -time * 20 + (i * 10);
+        wakeRings.forEach((ring, index) => {
+            const animatedRadius = island.radius + ring.radius + Math.sin(time * ring.speed + index) * 2;
+            
+            ctx.strokeStyle = `rgba(255, 255, 255, ${ring.opacity})`;
+            ctx.lineWidth = ring.thickness;
+            ctx.setLineDash([8, 8]);
+            ctx.lineDashOffset = -time * 15 + (index * 5);
             
             ctx.beginPath();
-            ctx.arc(island.x, island.y, radius, 0, Math.PI * 2);
+            ctx.arc(island.x, island.y, animatedRadius, 0, Math.PI * 2);
             ctx.stroke();
-        }
+        });
         
         ctx.setLineDash([]); // Reset dashes
     }
@@ -205,7 +324,7 @@ class GameMap {
     
     // Get current wind (for future mechanics)
     getWindAt(x, y) {
-        const time = Date.now() * 0.0005;
+        const time = this.waveTime * 0.5;
         const windX = Math.sin(time + x * 0.01) * 0.5;
         const windY = Math.cos(time + y * 0.01) * 0.3;
         
@@ -234,5 +353,11 @@ class GameMap {
             ctx.fillText(`R:${island.radius}`, island.x - 20, island.y - island.radius - 10);
             ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
         });
+        
+        // Display wave info
+        ctx.fillStyle = 'white';
+        ctx.font = '12px monospace';
+        ctx.fillText(`Wave Time: ${this.waveTime.toFixed(2)}`, 10, 20);
+        ctx.fillText(`Wave Layers: ${this.waveLayers.length}`, 10, 35);
     }
 } 
