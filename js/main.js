@@ -24,6 +24,7 @@ class Game {
         // Game objects
         this.map = null;
         this.ship = null;
+        this.collisionManager = null;
         
         // Game state
         this.gameState = 'loading'; // loading, playing, paused
@@ -132,6 +133,14 @@ class Game {
             // Pause on ESC
             if (e.code === 'Escape') {
                 this.togglePause();
+            }
+            
+            // Town entry on ENTER
+            if (e.code === 'Enter' && this.collisionManager) {
+                const townCheck = this.collisionManager.checkTownAreaEntry(this.ship);
+                if (townCheck.canEnter) {
+                    this.collisionManager.enterTown(townCheck.townArea);
+                }
             }
             
             // Zoom controls
@@ -303,10 +312,13 @@ class Game {
         
         // Initialize ship at a safe starting position in the massive ocean
         this.ship = new Ship(1000, 1000, this.assets.ship);
+        
+        // Initialize collision manager
+        this.collisionManager = new CollisionManager(this, this.map);
     }
     
     gameLoop(currentTime = 0) {
-        if (this.gameState !== 'playing') {
+        if (this.gameState === 'loading') {
             requestAnimationFrame((time) => this.gameLoop(time));
             return;
         }
@@ -341,7 +353,23 @@ class Game {
         
         // Update ship
         if (this.ship) {
-            this.ship.update(this.deltaTime, this.keys, this.map);
+            this.ship.update(this.deltaTime, this.keys, this.map, this.collisionManager);
+        }
+        
+        // Update collision manager
+        if (this.collisionManager && this.ship) {
+            this.collisionManager.updateLastValidPosition(this.ship);
+            
+            // Check for town area interactions
+            const townCheck = this.collisionManager.checkTownAreaEntry(this.ship);
+            if (townCheck.canEnter) {
+                this.collisionManager.showTownEntryPrompt(townCheck.townArea);
+            } else if (townCheck.approaching) {
+                // Ship is approaching but not close enough to enter
+                this.collisionManager.hideTownEntryPrompt();
+            } else {
+                this.collisionManager.hideTownEntryPrompt();
+            }
         }
         
         // Update HUD
@@ -351,6 +379,9 @@ class Game {
     render() {
         // Clear canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Only render game world if not in loading state
+        if (this.gameState === 'loading') return;
         
         // Apply zoom and center on ship
         this.ctx.save();
@@ -390,6 +421,11 @@ class Game {
         // Debug rendering
         if (window.DEBUG_MODE) {
             this.drawDebugInfo();
+        }
+        
+        // Render collision manager debug info
+        if (this.collisionManager && window.DEBUG_MODE) {
+            this.collisionManager.drawDebugInfo(this.ctx);
         }
         
         this.ctx.restore();
