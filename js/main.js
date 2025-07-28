@@ -136,6 +136,13 @@ class Game {
                 this.togglePause();
             }
             
+            // Debug mode toggle on F12
+            if (e.code === 'F12') {
+                e.preventDefault();
+                window.DEBUG_MODE = !window.DEBUG_MODE;
+                console.log('🔧 Debug mode:', window.DEBUG_MODE ? 'ON' : 'OFF');
+            }
+            
             // Town entry on ENTER
             if (e.code === 'Enter' && this.collisionManager) {
                 const townCheck = this.collisionManager.checkTownAreaEntry(this.ship);
