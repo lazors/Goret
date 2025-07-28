@@ -25,6 +25,7 @@ class Game {
         this.map = null;
         this.ship = null;
         this.collisionManager = null;
+        this.collisionEditor = null;
         
         // Game state
         this.gameState = 'loading'; // loading, playing, paused
@@ -315,6 +316,9 @@ class Game {
         
         // Initialize collision manager
         this.collisionManager = new CollisionManager(this, this.map);
+        
+        // Initialize collision editor for debug mode
+        this.collisionEditor = new CollisionEditor(this);
     }
     
     gameLoop(currentTime = 0) {
@@ -426,6 +430,11 @@ class Game {
         // Render collision manager debug info
         if (this.collisionManager && window.DEBUG_MODE) {
             this.collisionManager.drawDebugInfo(this.ctx);
+        }
+        
+        // Render collision editor overlay
+        if (this.collisionEditor && this.collisionEditor.isActive) {
+            this.collisionEditor.drawEditorOverlay(this.ctx);
         }
         
         this.ctx.restore();
@@ -590,6 +599,7 @@ let game;
 // Start game after DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     game = new Game();
+    window.game = game; // Make globally accessible for collision editor
     
     // Set development mode
     window.DEBUG_MODE = true; // Set to true to display debug info
