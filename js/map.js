@@ -74,22 +74,23 @@ class GameMap {
     }
     
     initializeIslands() {
-        // Single Saint Kits island in the center of the massive ocean
+        // Single Saint Kitts island in the center of the massive ocean
         this.islands = [
             {
                 x: 2000, // Moved closer to middle from left corner
                 y: 1500,
                 radius: 600, // 5x bigger island (120 * 5 = 600)
-                name: 'Saint Kits Island',
+                name: 'Saint Kitts Island',
                 image: this.assets.island,
-                outline: null // Will be populated with actual island outline
+                outline: null, // Will be populated with actual island outline
+                useManualOutline: true // Set to true to use manual points instead of PNG detection
             }
         ];
         
         // Generate outline data for collision detection
         this.generateIslandOutlines();
         
-        console.log('🏝️ Saint Kits Island initialized with outline collision');
+        console.log('🏝️ Saint Kitts Island initialized with outline collision');
     }
     
     generateIslandOutlines() {
@@ -98,8 +99,13 @@ class GameMap {
             console.log('📷 Island image available:', !!island.image);
             console.log('🖼️ Image type:', island.image ? island.image.constructor.name : 'None');
             
+            // Check if manual outline should be used
+            if (island.useManualOutline) {
+                island.outline = this.generateCustomOutline(island);
+                console.log('✅ Generated custom manual outline for', island.name, 'with', island.outline.points.length, 'points');
+            }
             // Use image-based outline generation for accurate coastline collision
-            if (island.image) {
+            else if (island.image) {
                 try {
                     island.outline = this.generateOutlineFromImage(island.image, island.radius);
                     console.log('✅ Generated image-based outline for', island.name, 'with', island.outline.points.length, 'points');
@@ -114,6 +120,38 @@ class GameMap {
                 console.log('🔄 Generated manual outline for', island.name, 'with', island.outline.points.length, 'points');
             }
         });
+    }
+    
+    generateCustomOutline(island) {
+        // MANUAL COLLISION OUTLINE CONFIGURATION
+        // Saint Kitts Island - 17 collision points (manually created with collision editor)
+        
+        // Saint Kitts Island - 17 collision points
+        const saintKitsIslandPoints = [
+            { x: -555.2, y: -382.3 },
+            { x: -279.0, y: -582.4 },
+            { x: -108.1, y: -447.1 },
+            { x: 65.7, y: -273.0 },
+            { x: 161.8, y: -79.8 },
+            { x: 262.6, y: -4.5 },
+            { x: 321.7, y: 190.4 },
+            { x: 414.0, y: 270.2 },
+            { x: 496.8, y: 303.0 },
+            { x: 575.2, y: 358.5 },
+            { x: 473.2, y: 553.2 },
+            { x: 328.0, y: 562.5 },
+            { x: 321.7, y: 415.5 },
+            { x: 282.8, y: 293.8 },
+            { x: 17.2, y: 139.0 },
+            { x: -175.0, y: 72.1 },
+            { x: -387.6, y: -116.9 }
+        ];
+        
+        // Usage in generateCustomOutline():
+        return {
+            points: saintKitsIslandPoints,
+            bounds: this.calculateOutlineBounds(saintKitsIslandPoints)
+        };
     }
     
     generateManualOutline(radius) {
@@ -148,12 +186,12 @@ class GameMap {
             const tempCanvas = document.createElement('canvas');
             const tempCtx = tempCanvas.getContext('2d');
             
-            // Use higher resolution for better coastline detection
+            // Use the actual radius * 2 for resolution to match the drawn island size
             const resolution = radius * 2;
             tempCanvas.width = resolution;
             tempCanvas.height = resolution;
             
-            // Draw the image
+            // Draw the image exactly as it appears in the game
             tempCtx.drawImage(image, 0, 0, resolution, resolution);
             
             // Try to get image data (may fail due to CORS)
@@ -168,54 +206,10 @@ class GameMap {
             }
             
             const data = imageData.data;
-            
-            // Find coastline by edge detection - scan from outside to inside
-            const outlinePoints = [];
-            const step = 1; // Use 1 pixel accuracy for better coastline detection
             const center = resolution / 2;
             
-            // Scan in radial directions from center to find island edges
-            const angleSteps = 128; // More angles for smoother coastline
-            for (let i = 0; i < angleSteps; i++) {
-                const angle = (i / angleSteps) * Math.PI * 2;
-                const dx = Math.cos(angle);
-                const dy = Math.sin(angle);
-                
-                // Scan from center outwards to find the edge
-                for (let distance = 0; distance < radius; distance += step) {
-                    const x = Math.round(center + dx * distance);
-                    const y = Math.round(center + dy * distance);
-                    
-                    if (x >= 0 && x < resolution && y >= 0 && y < resolution) {
-                        const index = (y * resolution + x) * 4;
-                        const alpha = data[index + 3];
-                        
-                        // If we hit a transparent pixel, the previous one was the edge
-                        if (alpha <= 128) {
-                            const prevDistance = Math.max(0, distance - step);
-                            const edgeX = center + dx * prevDistance;
-                            const edgeY = center + dy * prevDistance;
-                            
-                            // Convert to relative coordinates (center at 0,0)
-                            outlinePoints.push({
-                                x: edgeX - center,
-                                y: edgeY - center
-                            });
-                            break;
-                        }
-                    } else {
-                        // Hit canvas boundary, use current position
-                        const edgeX = center + dx * distance;
-                        const edgeY = center + dy * distance;
-                        
-                        outlinePoints.push({
-                            x: edgeX - center,
-                            y: edgeY - center
-                        });
-                        break;
-                    }
-                }
-            }
+            // Use edge detection to find the actual coastline
+            const outlinePoints = this.detectCoastlineEdges(data, resolution, center);
             
             // If no outline points found, use fallback
             if (outlinePoints.length === 0) {
@@ -225,8 +219,8 @@ class GameMap {
             
             console.log('🏖️ Successfully extracted', outlinePoints.length, 'coastline points from island image');
             
-            // Smooth the coastline by reducing noise
-            const smoothedPoints = this.smoothCoastline(outlinePoints);
+            // Apply minimal smoothing to preserve the actual island shape
+            const smoothedPoints = this.smoothCoastline(outlinePoints, 0.05); // Very minimal smoothing
             
             console.log('🌊 Coastline smoothed to', smoothedPoints.length, 'points');
             
@@ -239,6 +233,73 @@ class GameMap {
             console.warn('⚠️ Error generating coastline outline:', error);
             return this.generateManualOutline(radius);
         }
+    }
+    
+    detectCoastlineEdges(data, resolution, center) {
+        const outlinePoints = [];
+        const visited = new Set();
+        
+        // Helper function to check if a pixel is land (not transparent)
+        const isLand = (x, y) => {
+            if (x < 0 || x >= resolution || y < 0 || y >= resolution) return false;
+            const index = (y * resolution + x) * 4;
+            return data[index + 3] > 50; // Alpha > 50 means it's land
+        };
+        
+        // Helper function to check if a pixel is on the coastline (land pixel with water neighbor)
+        const isCoastline = (x, y) => {
+            if (!isLand(x, y)) return false;
+            
+            // Check 8 neighboring pixels
+            const neighbors = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1],           [0, 1],
+                [1, -1],  [1, 0],  [1, 1]
+            ];
+            
+            for (let [dx, dy] of neighbors) {
+                if (!isLand(x + dx, y + dy)) {
+                    return true; // Has at least one water neighbor
+                }
+            }
+            return false;
+        };
+        
+        // Scan the entire image to find coastline pixels
+        const coastlinePixels = [];
+        for (let y = 0; y < resolution; y++) {
+            for (let x = 0; x < resolution; x++) {
+                if (isCoastline(x, y)) {
+                    coastlinePixels.push({ x, y });
+                }
+            }
+        }
+        
+        if (coastlinePixels.length === 0) {
+            console.warn('⚠️ No coastline pixels found');
+            return [];
+        }
+        
+        console.log('🔍 Found', coastlinePixels.length, 'coastline pixels');
+        
+        // Sort coastline pixels by angle from center to create a proper outline
+        coastlinePixels.sort((a, b) => {
+            const angleA = Math.atan2(a.y - center, a.x - center);
+            const angleB = Math.atan2(b.y - center, b.x - center);
+            return angleA - angleB;
+        });
+        
+        // Convert to relative coordinates and thin out points for performance
+        const step = Math.max(1, Math.floor(coastlinePixels.length / 512)); // Max 512 points
+        for (let i = 0; i < coastlinePixels.length; i += step) {
+            const pixel = coastlinePixels[i];
+            outlinePoints.push({
+                x: pixel.x - center,
+                y: pixel.y - center
+            });
+        }
+        
+        return outlinePoints;
     }
     
     generateCircularOutline(radius) {
@@ -283,11 +344,11 @@ class GameMap {
         return simplified;
     }
     
-    smoothCoastline(points) {
+    smoothCoastline(points, smoothingFactor = 0.3) {
         if (points.length < 3) return points;
         
         const smoothed = [];
-        const smoothingFactor = 0.3; // How much smoothing to apply (0 = no smoothing, 1 = max smoothing)
+        // How much smoothing to apply (0 = no smoothing, 1 = max smoothing)
         
         // Apply simple moving average smoothing
         for (let i = 0; i < points.length; i++) {

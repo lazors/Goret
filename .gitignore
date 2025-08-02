@@ -20,7 +20,8 @@ desktop.ini
 .settings/
 .classpath
 .cursor
-
+.kiro
+.github
 # Logs and Debug Files
 *.log
 logs/

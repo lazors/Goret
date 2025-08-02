@@ -54,7 +54,7 @@ class Ship {
         console.log('🚢 Ship created at position:', x, y);
     }
     
-    update(deltaTime, keys, map) {
+    update(deltaTime, keys, map, collisionManager = null) {
         // Save previous position
         this.prevX = this.x;
         this.prevY = this.y;
@@ -72,7 +72,7 @@ class Ship {
         this.updatePosition(deltaTime);
         
         // Check map collisions
-        this.handleMapConstraints(map);
+        this.handleMapConstraints(map, collisionManager);
         
         // Update wake trail
         this.updateWakeTrail();
@@ -157,7 +157,7 @@ class Ship {
         this.y += deltaY;
     }
     
-    handleMapConstraints(map) {
+    handleMapConstraints(map, collisionManager = null) {
         if (!map) return;
         
         // Check map boundaries
@@ -170,24 +170,33 @@ class Ship {
             this.currentSpeed *= 0.5; // reduce speed on edge collision
         }
         
-        // Check island collisions with outline-based detection
-        const islandCollision = map.checkIslandCollision(this.x, this.y, this.radius);
-        if (islandCollision.collision) {
-            // Calculate push distance based on collision depth
-            const pushDistance = this.radius - islandCollision.distance;
-            
-            // Push away from island outline with smooth force
-            const pushForce = Math.min(pushDistance * 3, 60); // Slightly higher force for outline collision
-            this.x += islandCollision.pushX * pushForce;
-            this.y += islandCollision.pushY * pushForce;
-            
-            // Reduce speed on collision for more realistic physics
-            this.currentSpeed *= 0.4;
-            
-            // Ensure ship doesn't get pushed into another collision
-            const newConstrainedPos = map.getConstrainedPosition(this.x, this.y, this.radius);
-            this.x = newConstrainedPos.x;
-            this.y = newConstrainedPos.y;
+        // Use collision manager if available, otherwise fallback to map collision
+        if (collisionManager) {
+            const islandCollision = collisionManager.checkIslandCollision(this);
+            if (islandCollision.collision) {
+                // Revert to last valid position for more accurate PNG collision
+                collisionManager.revertShipPosition(this);
+            }
+        } else {
+            // Fallback to original map collision detection
+            const islandCollision = map.checkIslandCollision(this.x, this.y, this.radius);
+            if (islandCollision.collision) {
+                // Calculate push distance based on collision depth
+                const pushDistance = this.radius - islandCollision.distance;
+                
+                // Push away from island outline with smooth force
+                const pushForce = Math.min(pushDistance * 3, 60);
+                this.x += islandCollision.pushX * pushForce;
+                this.y += islandCollision.pushY * pushForce;
+                
+                // Reduce speed on collision for more realistic physics
+                this.currentSpeed *= 0.4;
+                
+                // Ensure ship doesn't get pushed into another collision
+                const newConstrainedPos = map.getConstrainedPosition(this.x, this.y, this.radius);
+                this.x = newConstrainedPos.x;
+                this.y = newConstrainedPos.y;
+            }
         }
     }
     

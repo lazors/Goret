@@ -24,6 +24,9 @@ class Game {
         // Game objects
         this.map = null;
         this.ship = null;
+        this.collisionManager = null;
+        this.collisionEditor = null;
+        this.portManager = null;
         
         // Game state
         this.gameState = 'loading'; // loading, playing, paused
@@ -70,6 +73,12 @@ class Game {
         console.log('🏴‍☠️ Initializing pirate game...');
         
         try {
+            // Display version info
+            if (window.GameVersion) {
+                console.log('🏴‍☠️ Starting', window.GameVersion.getFullVersionString());
+                this.updateLoadingText(`GORET ${window.GameVersion.getVersionString()} - Loading...`);
+            }
+            
             // Setup canvas
             console.log('📱 Setting up canvas...');
             this.setupCanvas();
@@ -89,6 +98,14 @@ class Game {
             // Hide loading screen
             console.log('🎭 Hiding loading screen...');
             this.hideLoadingScreen();
+            
+            // Display version in header
+            if (window.GameVersion) {
+                const versionElement = document.getElementById('gameVersion');
+                if (versionElement) {
+                    versionElement.textContent = `v${window.GameVersion.getVersionString()}`;
+                }
+            }
             
             // Start game loop
             console.log('🔄 Starting game loop...');
@@ -134,6 +151,21 @@ class Game {
                 this.togglePause();
             }
             
+            // Debug mode toggle on F12
+            if (e.code === 'F12') {
+                e.preventDefault();
+                window.DEBUG_MODE = !window.DEBUG_MODE;
+                console.log('🔧 Debug mode:', window.DEBUG_MODE ? 'ON' : 'OFF');
+            }
+            
+            // Town entry on ENTER
+            if (e.code === 'Enter' && this.collisionManager) {
+                const townCheck = this.collisionManager.checkTownAreaEntry(this.ship);
+                if (townCheck.canEnter) {
+                    this.collisionManager.enterTown(townCheck.townArea);
+                }
+            }
+            
             // Zoom controls
             if (e.code === 'NumpadAdd' || e.code === 'Equal') {
                 this.zoomIn();
@@ -174,7 +206,7 @@ class Game {
         const assetList = [
             { key: 'map', type: 'placeholder', width: 10240, height: 7680, color: '#1e3a5f' },
             { key: 'ship', type: 'image', src: 'assets/Ships/ship-4741839_960_720.webp' },
-            { key: 'island', type: 'image', src: 'assets/Islands/saint_kits.png' },
+            { key: 'island', type: 'image', src: 'assets/Islands/Saint_Kitts.png' },
             { key: 'wave', type: 'placeholder', width: 128, height: 128, color: '#2980b9' }
         ];
         
@@ -303,10 +335,19 @@ class Game {
         
         // Initialize ship at a safe starting position in the massive ocean
         this.ship = new Ship(1000, 1000, this.assets.ship);
+        
+        // Initialize collision manager
+        this.collisionManager = new CollisionManager(this, this.map);
+        
+        // Initialize port manager
+        this.portManager = new PortManager(this);
+        
+        // Initialize collision editor for debug mode
+        this.collisionEditor = new CollisionEditor(this);
     }
     
     gameLoop(currentTime = 0) {
-        if (this.gameState !== 'playing') {
+        if (this.gameState === 'loading') {
             requestAnimationFrame((time) => this.gameLoop(time));
             return;
         }
@@ -329,6 +370,7 @@ class Game {
     }
     
     update() {
+        // Only update game world if in playing state
         if (this.gameState !== 'playing') return;
         
         // Update zoom
@@ -341,7 +383,23 @@ class Game {
         
         // Update ship
         if (this.ship) {
-            this.ship.update(this.deltaTime, this.keys, this.map);
+            this.ship.update(this.deltaTime, this.keys, this.map, this.collisionManager);
+        }
+        
+        // Update collision manager
+        if (this.collisionManager && this.ship) {
+            this.collisionManager.updateLastValidPosition(this.ship);
+            
+            // Check for town area interactions
+            const townCheck = this.collisionManager.checkTownAreaEntry(this.ship);
+            if (townCheck.canEnter) {
+                this.collisionManager.showTownEntryPrompt(townCheck.townArea);
+            } else if (townCheck.approaching) {
+                // Ship is approaching but not close enough to enter
+                this.collisionManager.hideTownEntryPrompt();
+            } else {
+                this.collisionManager.hideTownEntryPrompt();
+            }
         }
         
         // Update HUD
@@ -351,6 +409,9 @@ class Game {
     render() {
         // Clear canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Only render game world if in playing state (not in port or loading)
+        if (this.gameState === 'loading' || this.gameState === 'port') return;
         
         // Apply zoom and center on ship
         this.ctx.save();
@@ -390,6 +451,16 @@ class Game {
         // Debug rendering
         if (window.DEBUG_MODE) {
             this.drawDebugInfo();
+        }
+        
+        // Render collision manager debug info
+        if (this.collisionManager && window.DEBUG_MODE) {
+            this.collisionManager.drawDebugInfo(this.ctx);
+        }
+        
+        // Render collision editor overlay
+        if (this.collisionEditor && this.collisionEditor.isActive) {
+            this.collisionEditor.drawEditorOverlay(this.ctx);
         }
         
         this.ctx.restore();
@@ -462,6 +533,11 @@ class Game {
         } else if (this.gameState === 'paused') {
             this.gameState = 'playing';
             console.log('▶️ Game resumed');
+        } else if (this.gameState === 'port') {
+            // Allow escape from port
+            if (this.portManager) {
+                this.portManager.exitPort();
+            }
         }
     }
     
@@ -554,6 +630,7 @@ let game;
 // Start game after DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     game = new Game();
+    window.game = game; // Make globally accessible for collision editor
     
     // Set development mode
     window.DEBUG_MODE = true; // Set to true to display debug info
