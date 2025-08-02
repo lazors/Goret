@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Port Interface Guide - Goret</title>
+    <style>
+        body {
+            font-family: 'Georgia', serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3a5f, #2980b9);
+            color: white;
+        }
+        
+        .container {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #FFD700;
+        }
+        
+        h1 {
+            color: #FFD700;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            margin-bottom: 30px;
+        }
+        
+        h2 {
+            color: #FFD700;
+            border-bottom: 2px solid #8B4513;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+        
+        .feature {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            border-left: 5px solid #FFD700;
+        }
+        
+        .service-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .service {
+            background: rgba(139, 69, 19, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #8B4513;
+            text-align: center;
+        }
+        
+        .service-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+        
+        .controls {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .controls kbd {
+            background: #333;
+            border: 1px solid #666;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            color: #FFD700;
+        }
+        
+        .changelog {
+            background: rgba(0, 100, 0, 0.2);
+            border: 2px solid #00FF00;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .screenshot {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: linear-gradient(45deg, #8B4513, #CD853F);
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 8px;
+            border: 2px solid #FFD700;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: linear-gradient(45deg, #CD853F, #FFD700);
+            color: #8B4513;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏴‍☠️ New Port Interface System</h1>
+        
+        <div class="changelog">
+            <h2>✨ What's New</h2>
+            <p><strong>Complete Port Interface Overhaul!</strong> Enter cities for a fully immersive colonial port experience with authentic Caribbean atmosphere.</p>
+        </div>
+        
+        <div class="feature">
+            <h2>🏘️ How to Enter Ports</h2>
+            <ol>
+                <li>Sail your ship close to <strong>Saint Kitts Port</strong> (on Saint Kitts Island)</li>
+                <li>You'll see a yellow entry circle when approaching</li>
+                <li>When close enough, you'll see: <em>"Press ENTER to enter town"</em></li>
+                <li>Press <kbd>Enter</kbd> to dock and enter the port</li>
+            </ol>
+        </div>
+        
+        <h2>🏛️ Available Services</h2>
+        <div class="service-grid">
+            <div class="service">
+                <span class="service-icon">🏛️</span>
+                <h3>Governor's Mansion</h3>
+                <p>Meet with the colonial governor for special missions, pardons, and letters of marque</p>
+            </div>
+            
+            <div class="service">
+                <span class="service-icon">🏪</span>
+                <h3>Market Square</h3>
+                <p>Buy and sell goods, manage your cargo, and check market prices</p>
+            </div>
+            
+            <div class="service">
+                <span class="service-icon">🍺</span>
+                <h3>The Salty Sailor Tavern</h3>
+                <p>Hire crew members, gather information, and enjoy drinks with fellow pirates</p>
+            </div>
+            
+            <div class="service">
+                <span class="service-icon">⚓</span>
+                <h3>Dockmaster's Office</h3>
+                <p>Repair your ship, purchase upgrades, and get harbor information</p>
+            </div>
+            
+            <div class="service">
+                <span class="service-icon">🏦</span>
+                <h3>Colonial Bank</h3>
+                <p>Store your gold safely, take loans, and exchange currencies</p>
+            </div>
+            
+            <div class="service">
+                <span class="service-icon">⛪</span>
+                <h3>Sacred Heart Church</h3>
+                <p>Receive blessings, healing services, and seek sanctuary</p>
+            </div>
+        </div>
+        
+        <div class="feature">
+            <h2>🎨 Visual Features</h2>
+            <ul>
+                <li><strong>Authentic Port Background:</strong> Historical Port Royal imagery</li>
+                <li><strong>Immersive Interface:</strong> Colonial-themed design with period-appropriate styling</li>
+                <li><strong>Interactive Service Cards:</strong> Hover effects and detailed descriptions</li>
+                <li><strong>Modal Service Windows:</strong> Individual interfaces for each building</li>
+                <li><strong>Responsive Design:</strong> Works on all screen sizes</li>
+            </ul>
+        </div>
+        
+        <div class="controls">
+            <h2>🎮 Controls</h2>
+            <p><kbd>Enter</kbd> - Enter port when near enough</p>
+            <p><kbd>Escape</kbd> - Exit port and return to ship</p>
+            <p><kbd>Click</kbd> - Visit service buildings</p>
+            <p><kbd>Mouse</kbd> - Hover over service cards for effects</p>
+        </div>
+        
+        <div class="feature">
+            <h2>🏗️ Technical Implementation</h2>
+            <ul>
+                <li><strong>New PortManager Class:</strong> Handles all port interface logic</li>
+                <li><strong>Enhanced Game States:</strong> Added 'port' state to game engine</li>
+                <li><strong>Modular Services:</strong> Easy to add new buildings and features</li>
+                <li><strong>CSS3 Styling:</strong> Modern styling with gradients and animations</li>
+                <li><strong>Event System:</strong> Proper cleanup and state management</li>
+                <li><strong>Saint Kitts Theme:</strong> Updated with authentic Saint Kitts port imagery</li>
+            </ul>
+        </div>
+        
+        <div class="feature">
+            <h2>🔮 Future Enhancements</h2>
+            <ul>
+                <li>Functional trading system in the Market</li>
+                <li>Crew hiring mechanics in the Tavern</li>
+                <li>Ship upgrade system at the Dockmaster</li>
+                <li>Banking and loan system</li>
+                <li>Quest system through the Governor</li>
+                <li>Multiple ports with different specialties</li>
+            </ul>
+        </div>
+        
+        <div class="screenshot">
+            <h2>🖼️ Port Interface Preview</h2>
+            <p><em>The new interface features a beautiful Saint Kitts colonial port background with six interactive service buildings, each offering unique opportunities for pirate captains exploring the Caribbean.</em></p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="index.html" class="btn">🚢 Launch Game</a>
+            <a href="collision-editor-guide.html" class="btn">⚙️ Collision Editor</a>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px solid #8B4513;">
+            <p><em>Fair winds and following seas, Captain! ⚓</em></p>
+        </div>
+    </div>
+</body>
+</html>

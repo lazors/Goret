@@ -26,6 +26,7 @@ class Game {
         this.ship = null;
         this.collisionManager = null;
         this.collisionEditor = null;
+        this.portManager = null;
         
         // Game state
         this.gameState = 'loading'; // loading, playing, paused
@@ -72,6 +73,12 @@ class Game {
         console.log('🏴‍☠️ Initializing pirate game...');
         
         try {
+            // Display version info
+            if (window.GameVersion) {
+                console.log('🏴‍☠️ Starting', window.GameVersion.getFullVersionString());
+                this.updateLoadingText(`GORET ${window.GameVersion.getVersionString()} - Loading...`);
+            }
+            
             // Setup canvas
             console.log('📱 Setting up canvas...');
             this.setupCanvas();
@@ -91,6 +98,14 @@ class Game {
             // Hide loading screen
             console.log('🎭 Hiding loading screen...');
             this.hideLoadingScreen();
+            
+            // Display version in header
+            if (window.GameVersion) {
+                const versionElement = document.getElementById('gameVersion');
+                if (versionElement) {
+                    versionElement.textContent = `v${window.GameVersion.getVersionString()}`;
+                }
+            }
             
             // Start game loop
             console.log('🔄 Starting game loop...');
@@ -191,7 +206,7 @@ class Game {
         const assetList = [
             { key: 'map', type: 'placeholder', width: 10240, height: 7680, color: '#1e3a5f' },
             { key: 'ship', type: 'image', src: 'assets/Ships/ship-4741839_960_720.webp' },
-            { key: 'island', type: 'image', src: 'assets/Islands/saint_kits.png' },
+            { key: 'island', type: 'image', src: 'assets/Islands/Saint_Kitts.png' },
             { key: 'wave', type: 'placeholder', width: 128, height: 128, color: '#2980b9' }
         ];
         
@@ -324,6 +339,9 @@ class Game {
         // Initialize collision manager
         this.collisionManager = new CollisionManager(this, this.map);
         
+        // Initialize port manager
+        this.portManager = new PortManager(this);
+        
         // Initialize collision editor for debug mode
         this.collisionEditor = new CollisionEditor(this);
     }
@@ -352,6 +370,7 @@ class Game {
     }
     
     update() {
+        // Only update game world if in playing state
         if (this.gameState !== 'playing') return;
         
         // Update zoom
@@ -391,8 +410,8 @@ class Game {
         // Clear canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Only render game world if not in loading state
-        if (this.gameState === 'loading') return;
+        // Only render game world if in playing state (not in port or loading)
+        if (this.gameState === 'loading' || this.gameState === 'port') return;
         
         // Apply zoom and center on ship
         this.ctx.save();
@@ -514,6 +533,11 @@ class Game {
         } else if (this.gameState === 'paused') {
             this.gameState = 'playing';
             console.log('▶️ Game resumed');
+        } else if (this.gameState === 'port') {
+            // Allow escape from port
+            if (this.portManager) {
+                this.portManager.exitPort();
+            }
         }
     }
     

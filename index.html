@@ -9,7 +9,7 @@
 <body>
     <div class="game-container">
         <div class="header">
-            <h1>🌊 Goret Adventure - Massive Ocean</h1>
+            <h1>🌊 Goret Adventure - Massive Ocean <span id="gameVersion" style="font-size: 0.6em; color: #FFD700;"></span></h1>
             <div class="controls-info">
                 <p>Controls: Arrows or WASD | Esc - pause | Scroll wheel or +/- to zoom</p>
                 <p>Map Size: 10,240 x 7,680 pixels - Explore the vast ocean!</p>
@@ -46,9 +46,11 @@
     </div>
 
     <!-- Scripts -->
+    <script src="js/version-manager.js"></script>
     <script src="js/map.js"></script>
     <script src="js/ship.js"></script>
     <script src="js/collision.js"></script>
+    <script src="js/port-manager.js"></script>
     <script src="js/collision-editor.js"></script>
     <script src="js/main.js"></script>
 </body>

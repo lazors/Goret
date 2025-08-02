@@ -74,13 +74,13 @@ class GameMap {
     }
     
     initializeIslands() {
-        // Single Saint Kits island in the center of the massive ocean
+        // Single Saint Kitts island in the center of the massive ocean
         this.islands = [
             {
                 x: 2000, // Moved closer to middle from left corner
                 y: 1500,
                 radius: 600, // 5x bigger island (120 * 5 = 600)
-                name: 'Saint Kits Island',
+                name: 'Saint Kitts Island',
                 image: this.assets.island,
                 outline: null, // Will be populated with actual island outline
                 useManualOutline: true // Set to true to use manual points instead of PNG detection
@@ -90,7 +90,7 @@ class GameMap {
         // Generate outline data for collision detection
         this.generateIslandOutlines();
         
-        console.log('🏝️ Saint Kits Island initialized with outline collision');
+        console.log('🏝️ Saint Kitts Island initialized with outline collision');
     }
     
     generateIslandOutlines() {
@@ -124,9 +124,9 @@ class GameMap {
     
     generateCustomOutline(island) {
         // MANUAL COLLISION OUTLINE CONFIGURATION
-        // Saint Kits Island - 17 collision points (manually created with collision editor)
+        // Saint Kitts Island - 17 collision points (manually created with collision editor)
         
-        // Saint Kits Island - 17 collision points
+        // Saint Kitts Island - 17 collision points
         const saintKitsIslandPoints = [
             { x: -555.2, y: -382.3 },
             { x: -279.0, y: -582.4 },

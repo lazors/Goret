@@ -25,13 +25,13 @@ class CollisionManager {
     }
     
     initializeTownAreas() {
-        // Define town areas within Saint Kits Island
-        const saintKitsIsland = this.map.islands.find(island => island.name === 'Saint Kits Island');
+        // Define town areas within Saint Kitts Island
+        const saintKitsIsland = this.map.islands.find(island => island.name === 'Saint Kitts Island');
         if (saintKitsIsland) {
             // Town area positioned within the island boundaries
             this.townAreas.set('saint_kits_port', {
                 id: 'saint_kits_port',
-                name: 'Saint Kits Port',
+                name: 'Saint Kitts Port',
                 islandId: 'saint_kits',
                 // Position town area within island (offset from island center)
                 x: saintKitsIsland.x + 150, // Slightly east of island center
@@ -39,7 +39,7 @@ class CollisionManager {
                 radius: 80, // Town interaction radius
                 entryRadius: 120, // Larger radius for entry detection
                 type: 'port',
-                services: ['market', 'shipyard', 'tavern', 'quest_giver'],
+                services: ['governor', 'market', 'tavern', 'dockmaster', 'bank', 'church'],
                 discovered: false
             });
             
@@ -417,87 +417,24 @@ class CollisionManager {
     enterTown(townArea) {
         console.log('🏘️ Entering town:', townArea.name);
         
-        // Trigger town mode transition
-        if (this.game.gameState === 'playing') {
-            this.game.gameState = 'town';
-            this.game.currentTown = townArea;
-            
-            // Show town interface
-            this.showTownInterface(townArea);
+        // Use the new PortManager instead of old interface
+        if (this.game.gameState === 'playing' && this.game.portManager) {
+            this.game.portManager.enterPort(townArea);
             
             // Hide town entry prompt
             this.hideTownEntryPrompt();
         }
     }
     
+    // Legacy town interface methods - replaced by PortManager
+    
     showTownInterface(townArea) {
-        // Create town interface overlay
-        let townInterface = document.getElementById('townInterface');
-        
-        if (!townInterface) {
-            townInterface = document.createElement('div');
-            townInterface.id = 'townInterface';
-            townInterface.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.9);
-                color: white;
-                z-index: 2000;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                font-family: Arial, sans-serif;
-            `;
-            document.body.appendChild(townInterface);
-        }
-        
-        townInterface.innerHTML = `
-            <div style="text-align: center; max-width: 600px;">
-                <h1>🏘️ Welcome to ${townArea.name}</h1>
-                <p>A bustling port town with various services for weary sailors.</p>
-                
-                <div style="margin: 30px 0;">
-                    <h3>Available Services:</h3>
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 20px 0;">
-                        ${townArea.services.map(service => `
-                            <button style="
-                                padding: 15px;
-                                background: #2c3e50;
-                                color: white;
-                                border: 2px solid #3498db;
-                                border-radius: 5px;
-                                cursor: pointer;
-                                font-size: 16px;
-                            " onclick="alert('${service} - Coming soon!')">
-                                ${this.getServiceIcon(service)} ${this.getServiceName(service)}
-                            </button>
-                        `).join('')}
-                    </div>
-                </div>
-                
-                <button onclick="game.collisionManager.exitTown()" style="
-                    padding: 15px 30px;
-                    background: #e74c3c;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-size: 18px;
-                    margin-top: 20px;
-                ">
-                    🚢 Return to Ship
-                </button>
-            </div>
-        `;
-        
-        townInterface.style.display = 'flex';
+        // This method is now handled by PortManager
+        console.log('⚠️ Legacy showTownInterface called - using PortManager instead');
     }
     
     getServiceIcon(service) {
+        // Legacy method - kept for compatibility
         const icons = {
             'market': '🏪',
             'shipyard': '⚓',
@@ -508,6 +445,7 @@ class CollisionManager {
     }
     
     getServiceName(service) {
+        // Legacy method - kept for compatibility
         const names = {
             'market': 'Market',
             'shipyard': 'Shipyard',
@@ -518,9 +456,15 @@ class CollisionManager {
     }
     
     exitTown() {
-        console.log('🚢 Exiting town, returning to sailing');
+        console.log('🚢 Legacy exitTown called - using PortManager instead');
         
-        // Return to sailing mode
+        // Fallback to new port manager if available
+        if (this.game.portManager) {
+            this.game.portManager.exitPort();
+            return;
+        }
+        
+        // Legacy fallback
         this.game.gameState = 'playing';
         this.game.currentTown = null;
         
