@@ -1,0 +1,20 @@
+{
+  "name": "goret",
+  "version": "1.0.0",
+  "description": "Browser-based HTML5/JavaScript game with pirate ship control on a sea map with animated waves.",
+  "main": "version-tool.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "depd": "^2.0.0",
+    "http-errors": "^2.0.0",
+    "raw-body": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.1.0"
+  }
+}

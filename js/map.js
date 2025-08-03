@@ -124,34 +124,44 @@ class GameMap {
     
     generateCustomOutline(island) {
         // MANUAL COLLISION OUTLINE CONFIGURATION
-        // Saint Kitts Island - 17 collision points (manually created with collision editor)
+        // Saint Kitts Island - 28 collision points (updated with collision editor)
         
-        // Saint Kitts Island - 17 collision points
-        const saintKitsIslandPoints = [
-            { x: -555.2, y: -382.3 },
-            { x: -279.0, y: -582.4 },
-            { x: -108.1, y: -447.1 },
-            { x: 65.7, y: -273.0 },
-            { x: 161.8, y: -79.8 },
-            { x: 262.6, y: -4.5 },
-            { x: 321.7, y: 190.4 },
-            { x: 414.0, y: 270.2 },
-            { x: 496.8, y: 303.0 },
-            { x: 575.2, y: 358.5 },
-            { x: 473.2, y: 553.2 },
-            { x: 328.0, y: 562.5 },
-            { x: 321.7, y: 415.5 },
-            { x: 282.8, y: 293.8 },
-            { x: 17.2, y: 139.0 },
-            { x: -175.0, y: 72.1 },
-            { x: -387.6, y: -116.9 }
-        ];
-        
-        // Usage in generateCustomOutline():
-        return {
-            points: saintKitsIslandPoints,
-            bounds: this.calculateOutlineBounds(saintKitsIslandPoints)
-        };
+        if (island.name === 'Saint Kitts Island') {
+            const points = [
+                { x: -201.2, y: -531.4 },
+                { x: -101.5, y: -489.8 },
+                { x: 15.5, y: -340.5 },
+                { x: 128.0, y: -258.7 },
+                { x: 212.3, y: -94.9 },
+                { x: 223.6, y: -3.6 },
+                { x: 273.3, y: 200.0 },
+                { x: 415.6, y: 385.6 },
+                { x: 554.6, y: 381.1 },
+                { x: 513.7, y: 483.8 },
+                { x: 455.2, y: 532.7 },
+                { x: 302.1, y: 572.8 },
+                { x: 280.7, y: 479.3 },
+                { x: 347.0, y: 442.9 },
+                { x: 282.8, y: 293.8 },
+                { x: 211.3, y: 220.7 },
+                { x: 152.4, y: 200.6 },
+                { x: 73.4, y: 124.3 },
+                { x: -2.9, y: 113.6 },
+                { x: -175.0, y: 72.1 },
+                { x: -387.6, y: -116.9 },
+                { x: -461.7, y: -222.1 },
+                { x: -446.2, y: -296.5 },
+                { x: -474.9, y: -352.1 },
+                { x: -522.3, y: -421.6 },
+                { x: -470.7, y: -497.5 },
+                { x: -345.5, y: -563.0 },
+                { x: -231.4, y: -573.8 }
+            ];
+            return {
+                points: points,
+                bounds: this.calculateOutlineBounds(points)
+            };
+        }
     }
     
     generateManualOutline(radius) {

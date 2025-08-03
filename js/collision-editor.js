@@ -1,9 +1,9 @@
 /**
- * Pirate Game - Interactive Collision Editor
- * Visual editor for island collision boundaries in debug mode
+ * Pirate Game - Interactive Map Editor
+ * Visual editor for islands, collision boundaries, and map assets
  */
 
-class CollisionEditor {
+class MapEditor {
     constructor(game) {
         this.game = game;
         this.isActive = false;
@@ -18,6 +18,7 @@ class CollisionEditor {
         this.editorPanel = null;
         this.pointsList = null;
         this.codeOutput = null;
+        this.imageInput = null;
         
         // Mouse interaction
         this.mousePos = { x: 0, y: 0 };
@@ -31,7 +32,7 @@ class CollisionEditor {
         this.setupEventListeners();
         this.createEditorUI();
         
-        console.log('🎨 Collision Editor initialized');
+        console.log('🗺️ Map Editor initialized');
     }
     
     setupEventListeners() {
@@ -65,14 +66,14 @@ class CollisionEditor {
     createEditorUI() {
         // Create editor panel
         this.editorPanel = document.createElement('div');
-        this.editorPanel.id = 'collisionEditor';
+        this.editorPanel.id = 'mapEditor';
         this.editorPanel.style.cssText = `
             position: fixed;
             top: 10px;
             right: 10px;
-            width: 350px;
-            max-height: 80vh;
-            background: rgba(0, 0, 0, 0.9);
+            width: 380px;
+            max-height: 85vh;
+            background: rgba(0, 0, 0, 0.95);
             color: white;
             border: 2px solid #3498db;
             border-radius: 8px;
@@ -86,13 +87,33 @@ class CollisionEditor {
         
         this.editorPanel.innerHTML = `
             <div style="border-bottom: 1px solid #3498db; padding-bottom: 10px; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #3498db;">🎨 Collision Editor</h3>
+                <h3 style="margin: 0; color: #3498db;">🗺️ Map Editor</h3>
                 <p style="margin: 5px 0; font-size: 11px; color: #bdc3c7;">
                     <strong>Controls:</strong> Ctrl+E: Toggle | Shift+A: Add Point | Del: Delete Point | Ctrl+S: Save
                 </p>
                 <p style="margin: 5px 0; font-size: 11px; color: #bdc3c7;">
-                    <strong>Mouse:</strong> Click to select point | Drag to move | Right-click near edge to add point
+                    <strong>Mouse:</strong> Click to select | Drag to move | Right-click to add point
                 </p>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #ecf0f1; font-weight: bold;">🏝️ Island Management:</label>
+                <div style="margin-bottom: 10px;">
+                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                    <button id="addIslandBtn" style="width: 31%; padding: 8px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 1.5%;">📍 Add Island</button>
+                    <button id="importImageBtn" style="width: 31%; padding: 8px; background: #9b59b6; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 1.5%;">🖼️ Import</button>
+                    <button id="deleteIslandBtn" style="width: 31%; padding: 8px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑️ Delete</button>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <button id="placeOnMapBtn" style="width: 48%; padding: 8px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 4%; display: none;">📍 Place on Map</button>
+                    <button id="saveToAssetsBtn" style="width: 48%; padding: 8px; background: #e67e22; color: white; border: none; border-radius: 4px; cursor: pointer; display: none;">💾 Save to Assets</button>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <button id="importSettingsBtn" style="width: 100%; padding: 8px; background: #8e44ad; color: white; border: none; border-radius: 4px; cursor: pointer; display: none;">⚙️ Import Island to Project</button>
+                </div>
+                <div id="placementInstructions" style="display: none; background: #2c3e50; padding: 8px; border-radius: 4px; margin-bottom: 10px;">
+                    <p style="margin: 0; font-size: 11px; color: #f39c12;">📍 Click on the map to place the island at that location</p>
+                </div>
             </div>
             
             <div style="margin-bottom: 15px;">
@@ -102,9 +123,25 @@ class CollisionEditor {
                 </select>
             </div>
             
+            <div style="margin-bottom: 15px;" id="islandPropertiesSection" style="display: none;">
+                <label style="display: block; margin-bottom: 5px; color: #ecf0f1;">Island Properties:</label>
+                <div style="background: #2c3e50; border: 1px solid #34495e; padding: 8px; border-radius: 4px;">
+                    <label style="display: block; margin: 5px 0; font-size: 11px;">Name:</label>
+                    <input type="text" id="islandNameInput" style="width: 100%; padding: 4px; background: #34495e; color: white; border: 1px solid #3498db; border-radius: 3px;">
+                    <label style="display: block; margin: 5px 0; font-size: 11px;">Position:</label>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="number" id="islandXInput" placeholder="X" style="width: 50%; padding: 4px; background: #34495e; color: white; border: 1px solid #3498db; border-radius: 3px;">
+                        <input type="number" id="islandYInput" placeholder="Y" style="width: 50%; padding: 4px; background: #34495e; color: white; border: 1px solid #3498db; border-radius: 3px;">
+                    </div>
+                    <label style="display: block; margin: 5px 0; font-size: 11px;">Radius:</label>
+                    <input type="number" id="islandRadiusInput" style="width: 100%; padding: 4px; background: #34495e; color: white; border: 1px solid #3498db; border-radius: 3px;">
+                    <button id="updateIslandBtn" style="width: 100%; padding: 6px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 8px;">Update Island</button>
+                </div>
+            </div>
+            
             <div style="margin-bottom: 15px;">
                 <label style="display: block; margin-bottom: 5px; color: #ecf0f1;">Collision Points:</label>
-                <div id="pointsList" style="max-height: 200px; overflow-y: auto; background: #2c3e50; border: 1px solid #34495e; padding: 8px;">
+                <div id="pointsList" style="max-height: 180px; overflow-y: auto; background: #2c3e50; border: 1px solid #34495e; padding: 8px;">
                     <p style="color: #7f8c8d; margin: 0;">Select an island to edit points</p>
                 </div>
             </div>
@@ -121,13 +158,15 @@ class CollisionEditor {
             
             <div style="margin-bottom: 15px;">
                 <label style="display: block; margin-bottom: 5px; color: #ecf0f1;">Generated Code:</label>
-                <textarea id="codeOutput" style="width: 100%; height: 150px; background: #2c3e50; color: #2ecc71; border: 1px solid #34495e; padding: 8px; font-family: 'Courier New', monospace; font-size: 11px; resize: vertical;" readonly placeholder="Select an island to generate code..."></textarea>
+                <textarea id="codeOutput" style="width: 100%; height: 120px; background: #2c3e50; color: #2ecc71; border: 1px solid #34495e; padding: 8px; font-family: 'Courier New', monospace; font-size: 11px; resize: vertical;" readonly placeholder="Select an island to generate code..."></textarea>
             </div>
             
-            <div>
-                <button id="copyCodeBtn" style="width: 32%; padding: 8px; background: #9b59b6; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 2%;">Copy Code</button>
-                <button id="exportAllBtn" style="width: 32%; padding: 8px; background: #16a085; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 2%;">Export All</button>
-                <button id="closeEditorBtn" style="width: 32%; padding: 8px; background: #34495e; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
+            <div style="margin-bottom: 10px;">
+                <button id="copyCodeBtn" style="width: 19%; padding: 8px; background: #9b59b6; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 1%;">Copy Code</button>
+                <button id="exportAllBtn" style="width: 19%; padding: 8px; background: #16a085; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 1%;">Export All</button>
+                <button id="saveToFileBtn" style="width: 19%; padding: 8px; background: #e67e22; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 1%;">💾 Save to JS</button>
+                <button id="saveToProjectBtn" style="width: 19%; padding: 8px; background: #8e44ad; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 1%;">⚙️ To Project</button>
+                <button id="closeEditorBtn" style="width: 19%; padding: 8px; background: #34495e; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
             </div>
         `;
         
@@ -137,6 +176,21 @@ class CollisionEditor {
         this.islandSelector = document.getElementById('islandSelector');
         this.pointsList = document.getElementById('pointsList');
         this.codeOutput = document.getElementById('codeOutput');
+        this.imageInput = document.getElementById('imageInput');
+        this.islandNameInput = document.getElementById('islandNameInput');
+        this.islandXInput = document.getElementById('islandXInput');
+        this.islandYInput = document.getElementById('islandYInput');
+        this.islandRadiusInput = document.getElementById('islandRadiusInput');
+        this.islandPropertiesSection = document.getElementById('islandPropertiesSection');
+        this.placeOnMapBtn = document.getElementById('placeOnMapBtn');
+        this.saveToAssetsBtn = document.getElementById('saveToAssetsBtn');
+        this.importSettingsBtn = document.getElementById('importSettingsBtn');
+        this.placementInstructions = document.getElementById('placementInstructions');
+        
+        // Island placement state
+        this.placementMode = false;
+        this.pendingIslandImage = null;
+        this.pendingIslandName = '';
         
         // Setup UI event listeners
         this.setupUIEventListeners();
@@ -148,7 +202,47 @@ class CollisionEditor {
             this.selectIsland(e.target.value);
         });
         
-        // Buttons
+        // Island management buttons
+        document.getElementById('addIslandBtn').addEventListener('click', () => {
+            this.addNewIsland();
+        });
+        
+        document.getElementById('importImageBtn').addEventListener('click', () => {
+            this.imageInput.click();
+        });
+        
+        document.getElementById('deleteIslandBtn').addEventListener('click', () => {
+            this.deleteSelectedIsland();
+        });
+        
+        // Image input handler
+        this.imageInput.addEventListener('change', (e) => {
+            this.handleImageImport(e);
+        });
+        
+        // Island placement buttons
+        document.getElementById('placeOnMapBtn').addEventListener('click', () => {
+            this.enablePlacementMode();
+        });
+        
+        document.getElementById('saveToAssetsBtn').addEventListener('click', () => {
+            this.saveIslandToAssets();
+        });
+        
+        document.getElementById('importSettingsBtn').addEventListener('click', () => {
+            this.importIslandToProject();
+        });
+        
+        // Island properties
+        document.getElementById('updateIslandBtn').addEventListener('click', () => {
+            this.updateIslandProperties();
+        });
+        
+        this.islandNameInput.addEventListener('change', () => {
+            this.updateIslandName();
+        });
+        
+        // Point editing buttons
         document.getElementById('addPointBtn').addEventListener('click', () => {
             this.addPointAtMouse();
         });
@@ -165,6 +259,7 @@ class CollisionEditor {
             this.validateCurrentIsland();
         });
         
+        // Code export buttons
         document.getElementById('copyCodeBtn').addEventListener('click', () => {
             this.copyCodeToClipboard();
         });
@@ -173,8 +268,40 @@ class CollisionEditor {
             this.exportAllIslandsCode();
         });
         
+        document.getElementById('saveToFileBtn').addEventListener('click', () => {
+            this.saveCollisionToFile();
+        });
+        
+        document.getElementById('saveToProjectBtn').addEventListener('click', () => {
+            this.saveCollisionToProject();
+        });
+        
         document.getElementById('closeEditorBtn').addEventListener('click', () => {
             this.toggleEditor();
+        });
+        
+        // Drag and drop for images
+        this.editorPanel.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.editorPanel.style.borderColor = '#27ae60';
+        });
+        
+        this.editorPanel.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.editorPanel.style.borderColor = '#3498db';
+        });
+        
+        this.editorPanel.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.editorPanel.style.borderColor = '#3498db';
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type.startsWith('image/')) {
+                this.handleImageFile(files[0]);
+            }
         });
     }
     
@@ -215,7 +342,7 @@ class CollisionEditor {
                 z-index: 999;
                 pointer-events: none;
             `;
-            hint.textContent = '🎨 COLLISION EDITOR ACTIVE';
+            hint.textContent = '🗺️ MAP EDITOR ACTIVE';
             document.body.appendChild(hint);
         }
     }
@@ -244,6 +371,7 @@ class CollisionEditor {
         if (islandIndex === '') {
             this.selectedIsland = null;
             this.selectedPointIndex = -1;
+            this.islandPropertiesSection.style.display = 'none';
             this.updatePointsList();
             this.updateCodeOutput();
             return;
@@ -253,10 +381,21 @@ class CollisionEditor {
         if (this.game.map && this.game.map.islands[index]) {
             this.selectedIsland = this.game.map.islands[index];
             this.selectedPointIndex = -1;
+            this.islandPropertiesSection.style.display = 'block';
+            this.updateIslandPropertiesUI();
             this.updatePointsList();
             this.updateCodeOutput();
             console.log('🏝️ Selected island:', this.selectedIsland.name);
         }
+    }
+    
+    updateIslandPropertiesUI() {
+        if (!this.selectedIsland) return;
+        
+        this.islandNameInput.value = this.selectedIsland.name || '';
+        this.islandXInput.value = this.selectedIsland.x || 0;
+        this.islandYInput.value = this.selectedIsland.y || 0;
+        this.islandRadiusInput.value = this.selectedIsland.radius || 100;
     }
     
     updatePointsList() {
@@ -274,7 +413,7 @@ class CollisionEditor {
             
             html += `
                 <div style="background: ${bgColor}; padding: 4px 8px; margin: 2px 0; border-radius: 3px; cursor: pointer; font-size: 11px;" 
-                     onclick="window.game.collisionEditor.selectPoint(${index})">
+                     onclick="window.game.mapEditor.selectPoint(${index})">
                     Point ${index}: (${point.x.toFixed(1)}, ${point.y.toFixed(1)})
                 </div>
             `;
@@ -322,7 +461,15 @@ class CollisionEditor {
     }
     
     handleMouseDown(e) {
-        if (!this.isActive || !this.selectedIsland) return false;
+        if (!this.isActive) return false;
+        
+        // Handle island placement mode
+        if (this.placementMode && this.pendingIslandImage) {
+            this.placeIslandAtMouse(e);
+            return true;
+        }
+        
+        if (!this.selectedIsland) return false;
         
         this.updateMousePosition(e);
         
@@ -543,6 +690,436 @@ class CollisionEditor {
         }
     }
     
+    addNewIsland() {
+        const islandName = prompt('Enter island name:', 'New Island');
+        if (!islandName) return;
+        
+        const x = parseFloat(prompt('Enter X position:', '0')) || 0;
+        const y = parseFloat(prompt('Enter Y position:', '0')) || 0;
+        const radius = parseFloat(prompt('Enter radius:', '150')) || 150;
+        
+        const newIsland = {
+            name: islandName,
+            x: x,
+            y: y,
+            radius: radius,
+            outline: this.game.map.generateManualOutline(radius),
+            image: null
+        };
+        
+        this.game.map.islands.push(newIsland);
+        this.populateIslandSelector();
+        
+        // Select the new island
+        this.islandSelector.value = this.game.map.islands.length - 1;
+        this.selectIsland(this.game.map.islands.length - 1);
+        
+        console.log('🏝️ Added new island:', islandName);
+    }
+    
+    deleteSelectedIsland() {
+        if (!this.selectedIsland) {
+            alert('No island selected');
+            return;
+        }
+        
+        const islandName = this.selectedIsland.name || 'Island';
+        if (confirm(`Delete "${islandName}"? This action cannot be undone.`)) {
+            const islandIndex = this.game.map.islands.indexOf(this.selectedIsland);
+            if (islandIndex >= 0) {
+                this.game.map.islands.splice(islandIndex, 1);
+                this.selectedIsland = null;
+                this.selectedPointIndex = -1;
+                this.islandPropertiesSection.style.display = 'none';
+                this.populateIslandSelector();
+                this.updatePointsList();
+                this.updateCodeOutput();
+                console.log('🗑️ Deleted island:', islandName);
+            }
+        }
+    }
+    
+    handleImageImport(event) {
+        const file = event.target.files[0];
+        if (file) {
+            this.handleImageFile(file);
+        }
+    }
+    
+    handleImageFile(file) {
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file');
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const islandName = prompt('Enter name for this island:', file.name.split('.')[0]);
+                if (!islandName) return;
+                
+                // Store the image for manual placement
+                this.pendingIslandImage = img;
+                this.pendingIslandName = islandName;
+                this.pendingIslandFile = file;
+                
+                // Show placement controls
+                this.placeOnMapBtn.style.display = 'inline-block';
+                this.saveToAssetsBtn.style.display = 'inline-block';
+                this.importSettingsBtn.style.display = 'inline-block';
+                
+                alert(`Island "${islandName}" loaded!\n\nChoose:\n- "Place on Map" to manually position it\n- "Save to Assets" to download it to Islands folder`);
+                
+                console.log('🖼️ Island image loaded, ready for placement:', islandName);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+    
+    enablePlacementMode() {
+        if (!this.pendingIslandImage) {
+            alert('No island image loaded. Please import an image first.');
+            return;
+        }
+        
+        this.placementMode = true;
+        this.placementInstructions.style.display = 'block';
+        this.placeOnMapBtn.textContent = '🚫 Cancel Placement';
+        this.placeOnMapBtn.style.background = '#e74c3c';
+        
+        // Change the button to cancel placement
+        this.placeOnMapBtn.onclick = () => {
+            this.disablePlacementMode();
+        };
+        
+        console.log('📍 Placement mode enabled - click on map to place island');
+    }
+    
+    disablePlacementMode() {
+        this.placementMode = false;
+        this.placementInstructions.style.display = 'none';
+        this.placeOnMapBtn.textContent = '📍 Place on Map';
+        this.placeOnMapBtn.style.background = '#3498db';
+        
+        // Reset the button to enable placement
+        this.placeOnMapBtn.onclick = () => {
+            this.enablePlacementMode();
+        };
+        
+        console.log('📍 Placement mode disabled');
+    }
+    
+    placeIslandAtMouse(event) {
+        if (!this.pendingIslandImage) return;
+        
+        this.updateMousePosition(event);
+        
+        const x = this.worldMousePos.x;
+        const y = this.worldMousePos.y;
+        const radius = parseFloat(prompt('Enter island radius:', Math.max(this.pendingIslandImage.width, this.pendingIslandImage.height) / 4)) || 150;
+        
+        const newIsland = {
+            name: this.pendingIslandName,
+            x: x,
+            y: y,
+            radius: radius,
+            image: this.pendingIslandImage,
+            imageSrc: this.pendingIslandImage.src,
+            outline: null
+        };
+        
+        // Try to generate outline from image
+        try {
+            newIsland.outline = this.game.map.generateOutlineFromImage(this.pendingIslandImage, radius);
+        } catch (error) {
+            console.warn('Could not generate outline from image, using manual outline');
+            newIsland.outline = this.game.map.generateManualOutline(radius);
+        }
+        
+        this.game.map.islands.push(newIsland);
+        this.populateIslandSelector();
+        
+        // Select the new island
+        this.islandSelector.value = this.game.map.islands.length - 1;
+        this.selectIsland(this.game.map.islands.length - 1);
+        
+        // Disable placement mode
+        this.disablePlacementMode();
+        
+        // Clear pending island
+        this.clearPendingIsland();
+        
+        console.log('🏝️ Island placed at:', x, y);
+        alert(`Island "${this.pendingIslandName}" placed successfully!\n\nYou can now:\n- Edit collision points\n- Adjust properties\n- Save to code`);
+    }
+    
+    saveIslandToAssets() {
+        if (!this.pendingIslandFile || !this.pendingIslandName) {
+            alert('No island file to save. Please import an image first.');
+            return;
+        }
+        
+        // Create a safe filename
+        const safeFileName = this.pendingIslandName.replace(/[^a-zA-Z0-9-_]/g, '_') + '.png';
+        
+        // Convert the image to PNG format for consistency
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = this.pendingIslandImage.width;
+        canvas.height = this.pendingIslandImage.height;
+        
+        ctx.drawImage(this.pendingIslandImage, 0, 0);
+        
+        // Create download
+        canvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = safeFileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // Generate asset integration code
+            this.generateAssetIntegrationCode(safeFileName);
+            
+            console.log('💾 Island saved to downloads:', safeFileName);
+        }, 'image/png');
+    }
+    
+    generateAssetIntegrationCode(fileName) {
+        const code = `
+// Add this to your asset loading in main.js loadAssets() method:
+{ key: '${this.pendingIslandName.toLowerCase().replace(/\s+/g, '')}', type: 'image', src: 'assets/Islands/${fileName}' },
+
+// Then use it in map.js by updating the islands array:
+{
+    name: '${this.pendingIslandName}',
+    x: 0, // Set your desired X coordinate
+    y: 0, // Set your desired Y coordinate
+    radius: 150, // Set your desired radius
+    image: this.assets['${this.pendingIslandName.toLowerCase().replace(/\s+/g, '')}'] || null
+}
+
+Instructions:
+1. Move the downloaded file '${fileName}' to your assets/Islands/ folder
+2. Add the asset loading code to main.js
+3. Add the island configuration to map.js
+4. Refresh your game to see the new island
+
+Generated on: ${new Date().toLocaleString()}`;
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(code).then(() => {
+            alert(`✅ Island "${this.pendingIslandName}" saved as ${fileName}!\n\nIntegration code copied to clipboard.\n\nNext steps:\n1. Move ${fileName} to assets/Islands/ folder\n2. Paste the code into your project files\n3. Refresh the game`);
+        }).catch(() => {
+            // Show code in a new window if clipboard fails
+            const newWindow = window.open('', '_blank');
+            newWindow.document.write(`<pre style="font-family: monospace; padding: 20px;">${code}</pre>`);
+            alert(`✅ Island "${this.pendingIslandName}" saved as ${fileName}!\n\nIntegration code opened in new window.\n\nNext steps:\n1. Move ${fileName} to assets/Islands/ folder\n2. Copy the code into your project files\n3. Refresh the game`);
+        });
+    }
+    
+    importIslandToProject() {
+        if (!this.pendingIslandFile || !this.pendingIslandName || !this.pendingIslandImage) {
+            alert('No island to import. Please load an image first.');
+            return;
+        }
+        
+        // Get island dimensions and properties
+        const islandData = this.collectIslandSettings();
+        if (!islandData) return;
+        
+        // Generate all necessary code and files
+        this.generateProjectIntegration(islandData);
+    }
+    
+    collectIslandSettings() {
+        // Get current island dimensions
+        const width = this.pendingIslandImage.width;
+        const height = this.pendingIslandImage.height;
+        
+        // Prompt for island placement coordinates
+        const x = prompt(`Enter X coordinate for ${this.pendingIslandName}:`, '0');
+        if (x === null) return null;
+        
+        const y = prompt(`Enter Y coordinate for ${this.pendingIslandName}:`, '0');
+        if (y === null) return null;
+        
+        const radius = prompt(`Enter collision radius for ${this.pendingIslandName}:`, Math.max(width, height) / 2);
+        if (radius === null) return null;
+        
+        return {
+            name: this.pendingIslandName,
+            fileName: this.pendingIslandName.replace(/[^a-zA-Z0-9-_]/g, '_') + '.png',
+            x: parseFloat(x) || 0,
+            y: parseFloat(y) || 0,
+            radius: parseFloat(radius) || 150,
+            width: width,
+            height: height,
+            key: this.pendingIslandName.toLowerCase().replace(/\s+/g, '')
+        };
+    }
+    
+    generateProjectIntegration(islandData) {
+        // Create safe filename
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = this.pendingIslandImage.width;
+        canvas.height = this.pendingIslandImage.height;
+        
+        ctx.drawImage(this.pendingIslandImage, 0, 0);
+        
+        // Save the PNG file
+        canvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = islandData.fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // Generate complete project integration
+            this.generateCompleteIntegration(islandData);
+            
+        }, 'image/png');
+    }
+    
+    generateCompleteIntegration(islandData) {
+        // Create comprehensive integration instructions
+        const integrationCode = `/*
+COMPLETE ISLAND INTEGRATION FOR ${islandData.name.toUpperCase()}
+
+STEP 1: Move File
+Move "${islandData.fileName}" to: assets/Islands/
+
+STEP 2: Update main.js - Add to loadAssets() method
+Find the assets array and add this line:
+*/
+{ key: '${islandData.key}', type: 'image', src: 'assets/Islands/${islandData.fileName}' },
+
+/*
+STEP 3: Update map.js - Add to islands array
+Find the islands array in the Map constructor and add:
+*/
+{
+    name: '${islandData.name}',
+    x: ${islandData.x},
+    y: ${islandData.y},
+    radius: ${islandData.radius},
+    image: null  // Will be loaded from assets
+},
+
+/*
+STEP 4: Update map.js - Add asset assignment
+In the Map constructor, after the islands array, add:
+*/
+// Assign loaded assets to islands
+this.islands.forEach(island => {
+    if (island.name === '${islandData.name}') {
+        island.image = this.assets['${islandData.key}'] || null;
+    }
+});
+
+/*
+ISLAND PROPERTIES:
+- Name: ${islandData.name}
+- Position: ${islandData.x}, ${islandData.y}
+- Radius: ${islandData.radius}
+- Dimensions: ${islandData.width}×${islandData.height}
+- File: ${islandData.fileName}
+- Asset Key: ${islandData.key}
+
+STEP 5: Test Integration
+1. Save all files
+2. Refresh your game
+3. The island should appear at coordinates (${islandData.x}, ${islandData.y})
+
+Generated on: ${new Date().toLocaleString()}
+*/`;
+
+        // Save integration instructions as a file
+        const instructionsBlob = new Blob([integrationCode], { type: 'text/plain' });
+        const instructionsUrl = URL.createObjectURL(instructionsBlob);
+        const instructionsLink = document.createElement('a');
+        instructionsLink.href = instructionsUrl;
+        instructionsLink.download = `${islandData.name}_integration_instructions.txt`;
+        document.body.appendChild(instructionsLink);
+        instructionsLink.click();
+        document.body.removeChild(instructionsLink);
+        URL.revokeObjectURL(instructionsUrl);
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(integrationCode).then(() => {
+            alert(`🎯 COMPLETE INTEGRATION PACKAGE CREATED!
+
+✅ Island File: ${islandData.fileName} (downloaded)
+✅ Instructions: ${islandData.name}_integration_instructions.txt (downloaded)
+✅ Code: Copied to clipboard
+
+Next Steps:
+1. Move PNG file to assets/Islands/ folder
+2. Follow the downloaded integration instructions
+3. Refresh your game to see the new island
+
+Island will appear at coordinates (${islandData.x}, ${islandData.y}) with radius ${islandData.radius}.`);
+        }).catch(() => {
+            alert(`🎯 INTEGRATION PACKAGE CREATED!
+
+✅ Island File: ${islandData.fileName} (downloaded)
+✅ Instructions: ${islandData.name}_integration_instructions.txt (downloaded)
+
+The integration code is in the downloaded instructions file.
+Follow the steps to add the island to your project.`);
+        });
+        
+        console.log('🎯 Complete project integration generated for:', islandData.name);
+    }
+    
+    clearPendingIsland() {
+        this.pendingIslandImage = null;
+        this.pendingIslandName = '';
+        this.pendingIslandFile = null;
+        this.placeOnMapBtn.style.display = 'none';
+        this.saveToAssetsBtn.style.display = 'none';
+        this.importSettingsBtn.style.display = 'none';
+        this.placementInstructions.style.display = 'none';
+        this.disablePlacementMode();
+    }
+    
+    updateIslandProperties() {
+        if (!this.selectedIsland) return;
+        
+        const newName = this.islandNameInput.value.trim();
+        const newX = parseFloat(this.islandXInput.value) || 0;
+        const newY = parseFloat(this.islandYInput.value) || 0;
+        const newRadius = parseFloat(this.islandRadiusInput.value) || 100;
+        
+        this.selectedIsland.name = newName;
+        this.selectedIsland.x = newX;
+        this.selectedIsland.y = newY;
+        this.selectedIsland.radius = newRadius;
+        
+        this.populateIslandSelector();
+        this.updateCodeOutput();
+        
+        console.log('📝 Updated island properties:', newName);
+    }
+    
+    updateIslandName() {
+        if (!this.selectedIsland) return;
+        
+        const newName = this.islandNameInput.value.trim();
+        this.selectedIsland.name = newName;
+        this.populateIslandSelector();
+        this.updateCodeOutput();
+    }
+    
     validateCurrentIsland() {
         if (!this.selectedIsland) {
             alert('No island selected');
@@ -645,6 +1222,242 @@ class CollisionEditor {
         });
     }
     
+    saveCollisionToFile() {
+        if (!this.selectedIsland || !this.selectedIsland.outline || !this.selectedIsland.outline.points) {
+            alert('Please select an island with collision points first');
+            return;
+        }
+        
+        const points = this.selectedIsland.outline.points;
+        const islandName = this.selectedIsland.name || 'Saint Kitts';
+        
+        // Generate the new collision points code
+        let newCode = `        // ${islandName} Island - ${points.length} collision points\n`;
+        newCode += `        const saintKittsIslandPoints = [\n`;
+        
+        points.forEach((point, index) => {
+            const comma = index < points.length - 1 ? ',' : '';
+            newCode += `            { x: ${point.x.toFixed(1)}, y: ${point.y.toFixed(1)} }${comma}\n`;
+        });
+        
+        newCode += `        ];\n\n`;
+        newCode += `        // Usage in generateCustomOutline():\n`;
+        newCode += `        return {\n`;
+        newCode += `            points: saintKittsIslandPoints,\n`;
+        newCode += `            bounds: this.calculateOutlineBounds(saintKittsIslandPoints)\n`;
+        newCode += `        };`;
+        
+        // Create a download link for the user to save the updated map.js
+        const downloadContent = `/*
+UPDATED COLLISION POINTS FOR ${islandName.toUpperCase()} ISLAND
+
+Replace the generateCustomOutline() method in map.js with this code:
+
+generateCustomOutline(island) {
+    // MANUAL COLLISION OUTLINE CONFIGURATION
+    // ${islandName} Island - ${points.length} collision points (updated with collision editor)
+    
+${newCode}
+}
+
+Instructions:
+1. Copy the entire generateCustomOutline() method above
+2. Open js/map.js in your editor
+3. Find the existing generateCustomOutline() method (around line 125)
+4. Replace it with the code above
+5. Save the file and refresh your game
+
+Generated on: ${new Date().toLocaleString()}
+*/`;
+
+        // Create and trigger download
+        const blob = new Blob([downloadContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${islandName.toLowerCase().replace(/\s+/g, '-')}-collision-update.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        // Also copy to clipboard
+        navigator.clipboard.writeText(newCode).then(() => {
+            console.log('💾 Collision points saved and copied to clipboard');
+            alert(`✅ ${islandName} collision points saved to file and copied to clipboard!\n\nA text file with instructions has been downloaded.\nThe collision code is also in your clipboard ready to paste into map.js`);
+        }).catch(err => {
+            console.error('Failed to copy code:', err);
+            alert(`✅ ${islandName} collision points saved to file!\n\nA text file with instructions has been downloaded.`);
+        });
+    }
+    
+    saveCollisionToProject() {
+        if (!this.selectedIsland || !this.selectedIsland.outline || !this.selectedIsland.outline.points) {
+            alert('Please select an island with collision points first');
+            return;
+        }
+        
+        const points = this.selectedIsland.outline.points;
+        const islandName = this.selectedIsland.name || 'Saint Kitts';
+        
+        // Collect island properties for project integration
+        const islandData = this.collectCollisionIslandData(islandName, points);
+        if (!islandData) return;
+        
+        // Generate complete project integration package
+        this.generateCollisionProjectIntegration(islandData);
+    }
+    
+    collectCollisionIslandData(islandName, points) {
+        // Get current island position and radius
+        const currentX = this.selectedIsland.x || 0;
+        const currentY = this.selectedIsland.y || 0;
+        const currentRadius = this.selectedIsland.radius || 150;
+        
+        // Prompt for confirmation or modification of island properties
+        const confirmUpdate = confirm(`Update ${islandName} collision in project?\n\nCurrent settings:\n- Position: ${currentX}, ${currentY}\n- Radius: ${currentRadius}\n- Collision Points: ${points.length}\n\nClick OK to use current settings, or Cancel to modify them.`);
+        
+        if (!confirmUpdate) {
+            // Allow user to modify settings
+            const newX = prompt(`Enter X coordinate for ${islandName}:`, currentX);
+            if (newX === null) return null;
+            
+            const newY = prompt(`Enter Y coordinate for ${islandName}:`, currentY);
+            if (newY === null) return null;
+            
+            const newRadius = prompt(`Enter collision radius for ${islandName}:`, currentRadius);
+            if (newRadius === null) return null;
+            
+            return {
+                name: islandName,
+                x: parseFloat(newX) || currentX,
+                y: parseFloat(newY) || currentY,
+                radius: parseFloat(newRadius) || currentRadius,
+                points: points,
+                key: islandName.toLowerCase().replace(/\s+/g, '')
+            };
+        }
+        
+        return {
+            name: islandName,
+            x: currentX,
+            y: currentY,
+            radius: currentRadius,
+            points: points,
+            key: islandName.toLowerCase().replace(/\s+/g, '')
+        };
+    }
+    
+    generateCollisionProjectIntegration(islandData) {
+        // Generate the collision points code
+        let collisionCode = `        // ${islandData.name} Island - ${islandData.points.length} collision points\n`;
+        collisionCode += `        const saintKittsIslandPoints = [\n`;
+        
+        islandData.points.forEach((point, index) => {
+            const comma = index < islandData.points.length - 1 ? ',' : '';
+            collisionCode += `            { x: ${point.x.toFixed(1)}, y: ${point.y.toFixed(1)} }${comma}\n`;
+        });
+        
+        collisionCode += `        ];\n\n`;
+        collisionCode += `        // Usage in generateCustomOutline():\n`;
+        collisionCode += `        return {\n`;
+        collisionCode += `            points: saintKittsIslandPoints,\n`;
+        collisionCode += `            bounds: this.calculateOutlineBounds(saintKittsIslandPoints)\n`;
+        collisionCode += `        };`;
+        
+        // Create comprehensive project integration instructions
+        const projectIntegration = `/*
+COMPLETE COLLISION UPDATE FOR ${islandData.name.toUpperCase()} ISLAND
+
+=== PROJECT INTEGRATION PACKAGE ===
+
+STEP 1: Update map.js - Replace generateCustomOutline() method
+Find the generateCustomOutline() method in map.js (around line 125) and replace it with:
+
+generateCustomOutline(island) {
+    // MANUAL COLLISION OUTLINE CONFIGURATION
+    // ${islandData.name} Island - ${islandData.points.length} collision points (updated with collision editor)
+    
+${collisionCode}
+}
+
+STEP 2: Update Island Configuration (if needed)
+If you need to update the island position or radius, find the islands array in map.js and update:
+
+{
+    name: '${islandData.name}',
+    x: ${islandData.x},
+    y: ${islandData.y},
+    radius: ${islandData.radius},
+    image: this.assets['${islandData.key}'] || null
+},
+
+=== COLLISION SUMMARY ===
+- Island: ${islandData.name}
+- Position: (${islandData.x}, ${islandData.y})
+- Radius: ${islandData.radius}
+- Collision Points: ${islandData.points.length}
+- Generated: ${new Date().toLocaleString()}
+
+=== INTEGRATION STEPS ===
+1. Open js/map.js in your code editor
+2. Find and replace the generateCustomOutline() method
+3. (Optional) Update island position/radius in islands array
+4. Save the file
+5. Refresh your game to test the new collision boundaries
+
+=== TESTING ===
+- Sail around the island to test collision detection
+- Verify the ship properly bounces off the island boundaries
+- Check that the collision feels natural and responsive
+
+Generated by Map Editor - Collision Integration System
+*/`;
+
+        // Save project integration file
+        const integrationBlob = new Blob([projectIntegration], { type: 'text/plain' });
+        const integrationUrl = URL.createObjectURL(integrationBlob);
+        const integrationLink = document.createElement('a');
+        integrationLink.href = integrationUrl;
+        integrationLink.download = `${islandData.name.toLowerCase().replace(/\s+/g, '-')}-project-collision-update.txt`;
+        document.body.appendChild(integrationLink);
+        integrationLink.click();
+        document.body.removeChild(integrationLink);
+        URL.revokeObjectURL(integrationUrl);
+        
+        // Copy collision code to clipboard
+        navigator.clipboard.writeText(collisionCode).then(() => {
+            alert(`🎯 COLLISION PROJECT INTEGRATION COMPLETE!
+
+✅ Collision Code: Copied to clipboard
+✅ Integration Instructions: Downloaded as ${islandData.name.toLowerCase().replace(/\s+/g, '-')}-project-collision-update.txt
+
+Island Details:
+- Name: ${islandData.name}
+- Position: (${islandData.x}, ${islandData.y})
+- Radius: ${islandData.radius}
+- Collision Points: ${islandData.points.length}
+
+Next Steps:
+1. Open js/map.js
+2. Replace generateCustomOutline() method with clipboard code
+3. Save and refresh your game
+4. Test the updated collision boundaries
+
+The collision code is ready to paste into your map.js file!`);
+        }).catch(() => {
+            alert(`🎯 COLLISION PROJECT INTEGRATION COMPLETE!
+
+✅ Integration Instructions: Downloaded
+✅ Ready for immediate project integration
+
+The downloaded file contains all necessary code and instructions.
+Follow the steps to update your project with the new collision boundaries.`);
+        });
+        
+        console.log('🎯 Collision project integration generated for:', islandData.name);
+    }
+    
     distanceToLineSegment(point, lineStart, lineEnd) {
         const A = point.x - lineStart.x;
         const B = point.y - lineStart.y;
@@ -678,6 +1491,11 @@ class CollisionEditor {
     // Render collision editor visuals
     drawEditorOverlay(ctx) {
         if (!this.isActive) return;
+        
+        // Draw placement preview if in placement mode
+        if (this.placementMode && this.pendingIslandImage) {
+            this.drawPlacementPreview(ctx);
+        }
         
         // If no island is selected, show all island outlines subtly
         if (!this.selectedIsland && this.game.map && this.game.map.islands) {
@@ -765,6 +1583,57 @@ class CollisionEditor {
             ctx.textAlign = 'left';
             ctx.fillText('Shift+A: Add Point | Del: Delete', this.worldMousePos.x + 15, this.worldMousePos.y - 10);
         }
+    }
+    
+    drawPlacementPreview(ctx) {
+        if (!this.pendingIslandImage) return;
+        
+        // Get current mouse position in world coordinates
+        const mouseWorld = this.screenToWorld(this.mousePos);
+        
+        // Draw semi-transparent preview of the island image
+        ctx.save();
+        ctx.globalAlpha = 0.7;
+        
+        const size = Math.max(this.pendingIslandImage.width, this.pendingIslandImage.height) / 4;
+        ctx.drawImage(
+            this.pendingIslandImage,
+            mouseWorld.x - size / 2,
+            mouseWorld.y - size / 2,
+            size,
+            size
+        );
+        
+        // Draw placement indicator
+        ctx.globalAlpha = 1.0;
+        ctx.strokeStyle = '#f39c12';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([10, 5]);
+        ctx.beginPath();
+        ctx.arc(mouseWorld.x, mouseWorld.y, size / 2, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Draw crosshairs at mouse position
+        ctx.strokeStyle = '#e74c3c';
+        ctx.lineWidth = 2;
+        const crossSize = 20;
+        ctx.beginPath();
+        ctx.moveTo(mouseWorld.x - crossSize, mouseWorld.y);
+        ctx.lineTo(mouseWorld.x + crossSize, mouseWorld.y);
+        ctx.moveTo(mouseWorld.x, mouseWorld.y - crossSize);
+        ctx.lineTo(mouseWorld.x, mouseWorld.y + crossSize);
+        ctx.stroke();
+        
+        // Draw instruction text
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(mouseWorld.x + 30, mouseWorld.y - 40, 180, 30);
+        ctx.fillStyle = '#f39c12';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(`Click to place "${this.pendingIslandName}"`, mouseWorld.x + 35, mouseWorld.y - 20);
+        
+        ctx.restore();
     }
     
     // Draw all island outlines when no specific island is selected
@@ -912,4 +1781,4 @@ class CollisionEditor {
 }
 
 // Global reference for easy access from UI elements
-window.CollisionEditor = CollisionEditor;
+window.MapEditor = MapEditor;
