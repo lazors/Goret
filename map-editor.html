@@ -459,10 +459,10 @@
                 <div class="input-group">
                     <label>Island Name</label>
                     <select id="islandName">
-                        <option value="__new__">+ Add New Island</option>
-                        <option value="Saint Kitts" selected>Saint Kitts</option>
+                        <option value="__new__" selected>+ Add New Island</option>
+                        <option value="Saint Kitts">Saint Kitts</option>
                     </select>
-                    <input type="text" id="newIslandName" placeholder="Enter new island name" style="display: none; margin-top: 5px;">
+                    <input type="text" id="newIslandName" placeholder="Enter new island name" style="display: block; margin-top: 5px;">
                 </div>
                 
                 <!-- Position Controls -->
@@ -497,6 +497,56 @@
                 <button class="btn btn-info" onclick="mapEditor.resetImageDimensions()" style="width: 100%; margin-top: 5px;">
                     🔄 Reset to Original Size
                 </button>
+                
+                <!-- Collision Editing (moved from separate section) -->
+                <div class="section-header">💥 Collision Editing</div>
+                <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                    <button class="btn btn-primary" onclick="mapEditor.addCollisionPoint()" style="flex: 1;">
+                        📍 Add Point
+                    </button>
+                    <button class="btn btn-primary" onclick="mapEditor.toggleCollisionLineMode()" id="collisionLineModeBtn" style="flex: 1;">
+                        ✏️ Draw Line
+                    </button>
+                </div>
+                
+                <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                    <button class="btn btn-warning" onclick="mapEditor.optimizePoints()" style="flex: 1;">
+                        ⚡ Optimize
+                    </button>
+                    <button class="btn btn-danger" onclick="mapEditor.clearCollision()" style="flex: 1;">
+                        🗑️ Clear
+                    </button>
+                </div>
+                
+                <div class="collision-points-list" id="collisionPointsList">
+                    <div style="text-align: center; color: #7f8c8d; font-style: italic;">
+                        Select an island to edit collision points
+                    </div>
+                </div>
+                
+                <!-- Export/Import Section -->
+                <div class="section-header">💾 Export/Import</div>
+                <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                    <button class="btn btn-success" onclick="mapEditor.exportSelectedIsland()" style="flex: 1;">
+                        📤 Export Config
+                    </button>
+                    <button class="btn btn-info" onclick="mapEditor.copyToClipboard()" style="flex: 1;">
+                        📋 Copy JSON
+                    </button>
+                </div>
+                
+                <button class="btn btn-warning" onclick="mapEditor.exportAllData()" style="width: 100%; margin-bottom: 5px;">
+                    💾 Export All Islands
+                </button>
+                
+                <div style="display: flex; gap: 8px; margin-top: 5px;">
+                    <button class="btn btn-success" onclick="mapEditor.manualSave()" style="flex: 1;" title="Save immediately to server">
+                        🔄 Save Now
+                    </button>
+                    <button class="btn btn-secondary" onclick="mapEditor.toggleAutoSave()" id="autoSaveBtn" style="flex: 1;" title="Toggle automatic saving">
+                        ⚡ Auto-Save: ON
+                    </button>
+                </div>
                 
                 <!-- Rotation -->
                 <div class="section-header">🔄 Rotation</div>
@@ -547,43 +597,6 @@
                 </button>
             </div>
             
-            <!-- Collision Editing -->
-            <div class="panel-section">
-                <div class="panel-title">Collision Editor</div>
-                
-                <div class="input-group">
-                    <label>Select Island</label>
-                    <select id="islandSelector" onchange="mapEditor.selectIsland()">
-                        <option value="">-- Select Island --</option>
-                    </select>
-                </div>
-                
-                <button class="btn btn-primary" onclick="mapEditor.addCollisionPoint()">
-                    📍 Add Point
-                </button>
-                
-                <button class="btn btn-warning" onclick="mapEditor.optimizePoints()">
-                    ⚡ Basic Optimize
-                </button>
-                
-                <button class="btn btn-warning" onclick="mapEditor.advancedOptimizePoints()" title="Advanced collision optimization with multiple algorithms">
-                    🔧 Advanced Optimize
-                </button>
-                
-                <button class="btn btn-danger" onclick="mapEditor.clearCollision()">
-                    🗑️ Clear Points
-                </button>
-                
-                <button class="btn btn-primary" onclick="mapEditor.toggleCollisionLineMode()" id="collisionLineModeBtn">
-                    ✏️ Draw Collision Line
-                </button>
-                
-                <div class="collision-points-list" id="collisionPointsList">
-                    <div style="text-align: center; color: #7f8c8d; font-style: italic;">
-                        Select an island to edit collision points
-                    </div>
-                </div>
-            </div>
             
             <!-- World Display -->
             <div class="panel-section">
@@ -626,12 +639,8 @@
                     🐛 Debug Undo
                 </button>
                 
-                <button class="btn btn-warning" onclick="mapEditor.exportData()">
-                    💾 Export Data
-                </button>
-                
                 <button class="btn btn-primary" onclick="mapEditor.importData()">
-                    📥 Import Data
+                    📥 Import Legacy Data
                 </button>
             </div>
             
@@ -690,6 +699,11 @@
                 // Undo system
                 this.undoStack = [];
                 this.maxUndoSteps = 50;
+                
+                // Auto-save system
+                this.autoSaveEnabled = true;
+                this.autoSaveDelay = 1000; // ms delay after last change
+                this.autoSaveTimer = null;
                 
                 // Islands and collision data
                 this.islands = [];
@@ -772,11 +786,17 @@
                 });
             }
             
-            init() {
+            async init() {
                 this.setupEventListeners();
                 this.setupCanvas();
                 this.setupEventHandlers();
-                this.loadExistingGameData();
+                
+                // Try to load from server first, fallback to existing game data
+                const loadedFromServer = await this.loadIslandsFromServer();
+                if (!loadedFromServer) {
+                    this.loadExistingGameData();
+                }
+                
                 // Save initial state after loading data for proper undo functionality
                 this.saveInitialUndoState();
                 this.updateUndoButton(); // Initialize undo button state
@@ -1273,8 +1293,25 @@
                         const oldX = this.selectedIsland.x;
                         const oldY = this.selectedIsland.y;
                         
-                        this.selectedIsland.x = this.worldMousePos.x - this.islandDragStart.x;
-                        this.selectedIsland.y = this.worldMousePos.y - this.islandDragStart.y;
+                        const newX = this.worldMousePos.x - this.islandDragStart.x;
+                        const newY = this.worldMousePos.y - this.islandDragStart.y;
+                        
+                        // Always allow movement, just show overlap warning
+                        this.selectedIsland.x = newX;
+                        this.selectedIsland.y = newY;
+                        
+                        // Check for overlaps and show warning (but don't prevent movement)
+                        const width = this.selectedIsland.width || 800;
+                        const height = this.selectedIsland.height || 600;
+                        const overlap = this.checkIslandOverlap(newX, newY, width, height, this.selectedIsland);
+                        
+                        if (overlap.overlaps) {
+                            // Show warning but allow the movement
+                            if (Date.now() - (this.lastOverlapWarning || 0) > 500) { // Throttle warnings
+                                this.updateStatus(`⚠️ Overlapping with ${overlap.islandName}`, 'warning');
+                                this.lastOverlapWarning = Date.now();
+                            }
+                        }
                         
                         // Move collision points with the island
                         if (this.selectedIsland.collision && this.selectedIsland.collision.length > 0) {
@@ -1579,25 +1616,51 @@
                         let islandName;
                         let existingIsland = null;
                         
-                        // Always prompt for island name when uploading image
-                        const defaultName = islandNameDropdown.value === '__new__' ? 
-                                          file.name.split('.')[0] : 
-                                          islandNameDropdown.value;
-                                          
-                        islandName = prompt('Enter name for the island:', defaultName);
-                        
-                        // If user cancelled the prompt, use default name
-                        if (!islandName || islandName.trim() === '') {
-                            islandName = defaultName;
+                        // Get island name from form inputs instead of prompting
+                        if (islandNameDropdown.value === '__new__') {
+                            // Use the new island name input or filename as fallback
+                            islandName = newIslandNameInput.value.trim() || file.name.split('.')[0];
+                        } else {
+                            // Use selected existing island name
+                            islandName = islandNameDropdown.value;
                         }
                         
+                        // Clean the name
                         islandName = islandName.trim();
                         
-                        // Check if this island name already exists
-                        existingIsland = this.islands.find(island => island.name === islandName);
+                        // For image uploads, always create new islands to avoid overwriting existing ones
+                        // Only check for existing island if user explicitly wants to update an existing one
+                        existingIsland = null;
                         
-                        const x = parseFloat(document.getElementById('islandX').value) || 0;
-                        const y = parseFloat(document.getElementById('islandY').value) || 0;
+                        // If user specifically selected an existing island from dropdown AND wants to update it
+                        if (islandNameDropdown.value !== '__new__' && islandNameDropdown.value !== '') {
+                            const confirmUpdate = confirm(`Do you want to update the existing "${islandName}" island with this new image?\n\nClick "Cancel" to create a new island instead.`);
+                            if (confirmUpdate) {
+                                existingIsland = this.islands.find(island => island.name === islandName);
+                            } else {
+                                // User wants new island, so generate unique name
+                                const baseName = islandName;
+                                let counter = 1;
+                                while (this.islands.find(island => island.name === islandName)) {
+                                    islandName = `${baseName} ${counter}`;
+                                    counter++;
+                                }
+                            }
+                        }
+                        
+                        // Define safe upload area (far from existing islands)
+                        // Saint Kitts: (1810, 1655), Nevis: (2699, 2493) 
+                        // Safe zone: Top-left corner (300-1000 range)
+                        const UPLOAD_SAFE_ZONE = {
+                            startX: 300,
+                            startY: 300, 
+                            gridSpacingX: 600,  // Large spacing for safety
+                            gridSpacingY: 600,
+                            maxPerRow: 3        // 3 islands per row max
+                        };
+                        
+                        let x = UPLOAD_SAFE_ZONE.startX;
+                        let y = UPLOAD_SAFE_ZONE.startY;
                         const radius = parseFloat(document.getElementById('islandRadius').value) || 150;
                         
                         // Save image to assets/Islands folder
@@ -1616,13 +1679,43 @@
                                     this.selectIslandByIndex(islandIndex);
                                     this.updateStatus(`Updated and saved image for island: ${islandName}`, 'success');
                                 } else {
-                                    // Create new island
+                                    // Create new island - check for overlaps first
+                                    const width = img.width || 800;
+                                    const height = img.height || 600;
+                                    
+                                    // Find next available position in top-left grid pattern
+                                    let attempts = 0;
+                                    const maxAttempts = 20;
+                                    
+                                    while (attempts < maxAttempts) {
+                                        const overlap = this.checkIslandOverlap(x, y, width, height);
+                                        
+                                        if (!overlap.overlaps) {
+                                            break; // Found safe position
+                                        }
+                                        
+                                        // Move to next position using safe zone constants
+                                        attempts++;
+                                        if (attempts % UPLOAD_SAFE_ZONE.maxPerRow === 0) {
+                                            // Move to next row
+                                            x = UPLOAD_SAFE_ZONE.startX;
+                                            y += UPLOAD_SAFE_ZONE.gridSpacingY;
+                                        } else {
+                                            // Move right in current row
+                                            x += UPLOAD_SAFE_ZONE.gridSpacingX;
+                                        }
+                                    }
+                                    
+                                    // Update the input fields to show the final position
+                                    document.getElementById('islandX').value = x;
+                                    document.getElementById('islandY').value = y;
+                                    
                                     const island = {
                                         name: islandName,
                                         x: x,
                                         y: y,
-                                        width: img.width || 800,
-                                        height: img.height || 600,
+                                        width: width,
+                                        height: height,
                                         radius: radius,
                                         rotation: parseFloat(document.getElementById('islandRotation').value) || 0,
                                         image: img,
@@ -1791,6 +1884,12 @@
             
             selectIsland() {
                 const selector = document.getElementById('islandSelector');
+                
+                // Check if selector exists (it was removed when we consolidated UI)
+                if (!selector) {
+                    return; // Skip if selector doesn't exist
+                }
+                
                 const index = parseInt(selector.value);
                 
                 if (index >= 0 && index < this.islands.length) {
@@ -1837,6 +1936,14 @@
             
             updateIslandSelector() {
                 const selector = document.getElementById('islandSelector');
+                
+                // Check if selector exists (it was removed when we consolidated UI)
+                if (!selector) {
+                    // Just update the island name dropdown and return
+                    this.updateIslandNameDropdown();
+                    return;
+                }
+                
                 selector.innerHTML = '<option value="">-- Select Island --</option>';
                 
                 this.islands.forEach((island, index) => {
@@ -1925,6 +2032,9 @@
                 this.updateCollisionPointsList();
                 this.updateStatus('Added collision point at center', 'success');
                 this.render();
+                
+                // Schedule auto-save
+                this.scheduleAutoSave();
             }
             
             optimizePoints() {
@@ -2250,6 +2360,9 @@ Enter numbers (e.g., "1,3,5" or "all" for all options):`;
                     this.updateCollisionPointsList();
                     this.updateStatus('Collision points cleared', 'success');
                     this.render();
+                    
+                    // Schedule auto-save
+                    this.scheduleAutoSave();
                 }
             }
             
@@ -2674,6 +2787,384 @@ relative coordinates for your project!
                 this.updateStatus('Data exported successfully', 'success');
             }
             
+            exportSelectedIsland() {
+                if (!this.selectedIsland) {
+                    this.updateStatus('Please select an island first', 'warning');
+                    return;
+                }
+                
+                const island = this.selectedIsland;
+                const config = {
+                    name: island.name,
+                    position: { x: island.x, y: island.y },
+                    dimensions: { 
+                        width: island.width || 800, 
+                        height: island.height || 600, 
+                        radius: island.radius || 150 
+                    },
+                    rotation: island.rotation || 0,
+                    collision: {
+                        points: island.collision || [],
+                        pointCount: island.collision ? island.collision.length : 0
+                    },
+                    image: {
+                        path: island.imagePath || null,
+                        hasImage: !!island.imagePath
+                    }
+                };
+                
+                // Generate comprehensive output
+                const codeOutput = this.generateIslandCode(config);
+                this.showIslandConfigurationDialog(config, codeOutput);
+            }
+            
+            copyToClipboard() {
+                if (!this.selectedIsland) {
+                    this.updateStatus('Please select an island first', 'warning');
+                    return;
+                }
+                
+                const island = this.selectedIsland;
+                const jsonData = {
+                    name: island.name,
+                    x: island.x,
+                    y: island.y,
+                    width: island.width || 800,
+                    height: island.height || 600,
+                    radius: island.radius || 150,
+                    rotation: island.rotation || 0,
+                    collision: island.collision || [],
+                    imagePath: island.imagePath || null
+                };
+                
+                navigator.clipboard.writeText(JSON.stringify(jsonData, null, 2)).then(() => {
+                    this.updateStatus('Island JSON copied to clipboard', 'success');
+                }).catch(() => {
+                    this.updateStatus('Failed to copy to clipboard', 'error');
+                });
+            }
+            
+            exportAllData() {
+                const allIslands = this.islands.map(island => ({
+                    name: island.name,
+                    x: island.x,
+                    y: island.y,
+                    width: island.width || 800,
+                    height: island.height || 600,
+                    radius: island.radius || 150,
+                    rotation: island.rotation || 0,
+                    collision: island.collision || [],
+                    imagePath: island.imagePath || null,
+                    originalImageData: island.originalImageData || null,
+                    hasCustomImage: !!(island.imagePath && island.originalImageData)
+                }));
+                
+                const dataStr = JSON.stringify({ islands: allIslands }, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `islands-complete-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                
+                URL.revokeObjectURL(url);
+                this.updateStatus(`Exported ${allIslands.length} islands with complete configuration`, 'success');
+            }
+            
+            generateIslandCode(config) {
+                const island = config;
+                
+                let code = `// ===== ISLAND CONFIGURATION =====\n\n`;
+                code += `// Island: ${island.name}\n`;
+                code += `// Generated: ${new Date().toISOString()}\n\n`;
+                
+                // 1. JavaScript object format for game integration
+                code += `// 1. Game Integration Format:\n`;
+                code += `const ${island.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}Config = {\n`;
+                code += `    name: "${island.name}",\n`;
+                code += `    x: ${island.position.x},\n`;
+                code += `    y: ${island.position.y},\n`;
+                code += `    width: ${island.dimensions.width},\n`;
+                code += `    height: ${island.dimensions.height},\n`;
+                code += `    radius: ${island.dimensions.radius},\n`;
+                code += `    rotation: ${island.rotation},\n`;
+                
+                if (island.image.path) {
+                    code += `    imagePath: "${island.image.path}",\n`;
+                }
+                
+                if (island.collision.pointCount > 0) {
+                    code += `    collision: [\n`;
+                    island.collision.points.forEach((point, index) => {
+                        const comma = index < island.collision.points.length - 1 ? ',' : '';
+                        code += `        { x: ${point.x}, y: ${point.y} }${comma}\n`;
+                    });
+                    code += `    ]\n`;
+                } else {
+                    code += `    collision: []  // No collision points defined\n`;
+                }
+                
+                code += `};\n\n`;
+                
+                // 2. Summary comment
+                code += `/*\n`;
+                code += `ISLAND SUMMARY:\n`;
+                code += `Name: ${island.name}\n`;
+                code += `Position: (${island.position.x}, ${island.position.y})\n`;
+                code += `Dimensions: ${island.dimensions.width}×${island.dimensions.height}px\n`;
+                code += `Collision Radius: ${island.dimensions.radius}px\n`;
+                code += `Rotation: ${island.rotation}°\n`;
+                code += `Collision Points: ${island.collision.pointCount}\n`;
+                if (island.image.path) {
+                    code += `Image: ${island.image.path}\n`;
+                }
+                code += `*/\n\n`;
+                
+                // 3. JSON format for API/config files
+                code += `// 3. JSON Format for APIs/Config Files:\n`;
+                code += JSON.stringify({
+                    name: island.name,
+                    x: island.position.x,
+                    y: island.position.y,
+                    width: island.dimensions.width,
+                    height: island.dimensions.height,
+                    radius: island.dimensions.radius,
+                    rotation: island.rotation,
+                    collision: island.collision.points,
+                    imagePath: island.image.path
+                }, null, 2);
+                
+                return code;
+            }
+            
+            // Check if a new island would overlap with existing islands
+            checkIslandOverlap(x, y, width, height, excludeIsland = null) {
+                const margin = 200; // Minimum pixels between islands (increased for better spacing)
+                
+                for (const island of this.islands) {
+                    if (island === excludeIsland) continue;
+                    
+                    const island1 = {
+                        left: x - width / 2 - margin,
+                        right: x + width / 2 + margin,
+                        top: y - height / 2 - margin,
+                        bottom: y + height / 2 + margin
+                    };
+                    
+                    const island2 = {
+                        left: island.x - (island.width || 800) / 2,
+                        right: island.x + (island.width || 800) / 2,
+                        top: island.y - (island.height || 600) / 2,
+                        bottom: island.y + (island.height || 600) / 2
+                    };
+                    
+                    // Check for overlap
+                    if (island1.left < island2.right && 
+                        island1.right > island2.left && 
+                        island1.top < island2.bottom && 
+                        island1.bottom > island2.top) {
+                        return { overlaps: true, islandName: island.name };
+                    }
+                }
+                
+                return { overlaps: false };
+            }
+            
+            // Find a safe position for a new island
+            findSafeIslandPosition(width, height) {
+                const attempts = 50;
+                const worldWidth = this.WORLD_WIDTH;
+                const worldHeight = this.WORLD_HEIGHT;
+                
+                for (let i = 0; i < attempts; i++) {
+                    // Generate random position with some margin from world edges
+                    const margin = Math.max(width, height) / 2 + 200;
+                    const x = margin + Math.random() * (worldWidth - 2 * margin);
+                    const y = margin + Math.random() * (worldHeight - 2 * margin);
+                    
+                    const overlap = this.checkIslandOverlap(x, y, width, height);
+                    if (!overlap.overlaps) {
+                        return { x: Math.round(x), y: Math.round(y) };
+                    }
+                }
+                
+                // If no safe position found, place in top-left area
+                return { x: 500, y: 500 };
+            }
+            
+            // Draw overlap warning zones (debug visualization)
+            drawOverlapZones() {
+                if (!this.selectedIsland) return;
+                
+                this.ctx.save();
+                this.ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+                this.ctx.lineWidth = 2;
+                this.ctx.setLineDash([10, 5]);
+                
+                const margin = 200;
+                const selectedWidth = this.selectedIsland.width || 800;
+                const selectedHeight = this.selectedIsland.height || 600;
+                
+                // Draw safety zones around other islands
+                for (const island of this.islands) {
+                    if (island === this.selectedIsland) continue;
+                    
+                    const zoneX = (island.x - (island.width || 800) / 2 - margin) * this.zoom + this.offsetX;
+                    const zoneY = (island.y - (island.height || 600) / 2 - margin) * this.zoom + this.offsetY;
+                    const zoneWidth = ((island.width || 800) + 2 * margin) * this.zoom;
+                    const zoneHeight = ((island.height || 600) + 2 * margin) * this.zoom;
+                    
+                    this.ctx.strokeRect(zoneX, zoneY, zoneWidth, zoneHeight);
+                }
+                
+                this.ctx.restore();
+            }
+            
+            // Auto-save functionality
+            async autoSaveIslands() {
+                if (!this.autoSaveEnabled || this.islands.length === 0) return;
+                
+                try {
+                    const saveData = this.islands.map(island => ({
+                        name: island.name,
+                        x: island.x,
+                        y: island.y,
+                        width: island.width || 800,
+                        height: island.height || 600,
+                        radius: island.radius || 150,
+                        rotation: island.rotation || 0,
+                        collision: island.collision || [],
+                        imagePath: island.imagePath || null,
+                        originalImageData: island.originalImageData || null,  // Include base64 image data
+                        hasCustomImage: !!(island.imagePath && island.originalImageData)
+                    }));
+                    
+                    const response = await fetch('http://localhost:8001/api/islands/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(saveData)
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        this.updateStatus(`🔄 Auto-saved ${result.count} islands`, 'success');
+                        console.log('✅ Islands auto-saved to:', result.jsonPath, result.jsPath);
+                    } else {
+                        console.warn('⚠️ Auto-save failed:', response.status);
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Auto-save error:', error.message);
+                    // Don't show error to user for auto-save failures
+                }
+            }
+            
+            scheduleAutoSave() {
+                if (!this.autoSaveEnabled) return;
+                
+                // Clear existing timer
+                if (this.autoSaveTimer) {
+                    clearTimeout(this.autoSaveTimer);
+                }
+                
+                // Schedule new auto-save
+                this.autoSaveTimer = setTimeout(() => {
+                    this.autoSaveIslands();
+                }, this.autoSaveDelay);
+            }
+            
+            async loadIslandsFromServer() {
+                try {
+                    const response = await fetch('http://localhost:8001/api/islands/load');
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success && result.islands.length > 0) {
+                            // Reconstruct islands with proper image objects
+                            this.islands = result.islands.map(islandData => {
+                                const island = { ...islandData };
+                                
+                                // Load image if we have image data
+                                if (island.originalImageData) {
+                                    // Create image object from base64 data
+                                    const img = new Image();
+                                    img.onload = () => {
+                                        island.image = img;
+                                        this.render(); // Re-render when image loads
+                                    };
+                                    img.onerror = () => {
+                                        console.warn(`Failed to load image for island: ${island.name}`);
+                                    };
+                                    img.src = island.originalImageData;
+                                } else if (island.imagePath) {
+                                    // Fallback to loading from path
+                                    this.loadIslandImageFromPath(island, island.imagePath);
+                                } else {
+                                    // Handle default islands (Saint Kitts, Nevis, etc.)
+                                    this.loadDefaultIslandImage(island);
+                                }
+                                
+                                return island;
+                            });
+                            
+                            this.updateIslandDropdown();
+                            this.render();
+                            this.updateStatus(`📥 Loaded ${result.islands.length} islands from server (with images)`, 'success');
+                            return true;
+                        }
+                    }
+                    return false;
+                } catch (error) {
+                    console.warn('Could not load from server:', error.message);
+                    return false;
+                }
+            }
+            
+            loadDefaultIslandImage(island) {
+                // Handle loading default images for built-in islands
+                const defaultImages = {
+                    'Saint Kitts': 'assets/Islands/Saint_Kitts.png',
+                    'Nevis': 'assets/Islands/Nevis.png'
+                };
+                
+                if (defaultImages[island.name]) {
+                    const img = new Image();
+                    img.onload = () => {
+                        island.image = img;
+                        island.imagePath = defaultImages[island.name];
+                        this.render();
+                    };
+                    img.onerror = () => {
+                        console.warn(`Could not load default image for ${island.name}`);
+                    };
+                    img.src = defaultImages[island.name];
+                }
+            }
+            
+            async manualSave() {
+                await this.autoSaveIslands();
+            }
+            
+            toggleAutoSave() {
+                this.autoSaveEnabled = !this.autoSaveEnabled;
+                const btn = document.getElementById('autoSaveBtn');
+                
+                if (this.autoSaveEnabled) {
+                    btn.textContent = '⚡ Auto-Save: ON';
+                    btn.className = 'btn btn-success';
+                    this.updateStatus('Auto-save enabled', 'success');
+                } else {
+                    btn.textContent = '💤 Auto-Save: OFF';
+                    btn.className = 'btn btn-secondary';
+                    this.updateStatus('Auto-save disabled', 'warning');
+                    
+                    // Clear any pending auto-save
+                    if (this.autoSaveTimer) {
+                        clearTimeout(this.autoSaveTimer);
+                        this.autoSaveTimer = null;
+                    }
+                }
+            }
+            
             importData() {
                 const input = document.createElement('input');
                 input.type = 'file';
@@ -2998,6 +3489,11 @@ See console for detailed information.`;
                 this.islands.forEach((island, index) => {
                     this.drawIsland(island, index === this.islands.indexOf(this.selectedIsland));
                 });
+                
+                // Draw overlap warning zones when dragging islands
+                if (this.isDragging && this.islandDragStart) {
+                    this.drawOverlapZones();
+                }
                 
                 // Draw UI elements
                 this.drawUI();
@@ -3593,6 +4089,20 @@ See console for detailed information.`;
                 
                 this.selectedIsland[property] = numValue;
                 
+                // Check for overlaps when moving islands (warning only, don't prevent)
+                if (property === 'x' || property === 'y') {
+                    const testX = property === 'x' ? numValue : this.selectedIsland.x;
+                    const testY = property === 'y' ? numValue : this.selectedIsland.y;
+                    const width = this.selectedIsland.width || 800;
+                    const height = this.selectedIsland.height || 600;
+                    
+                    const overlap = this.checkIslandOverlap(testX, testY, width, height, this.selectedIsland);
+                    
+                    if (overlap.overlaps) {
+                        this.updateStatus(`⚠️ Now overlapping with ${overlap.islandName}`, 'warning');
+                    }
+                }
+                
                 // If position changed, move collision points with the island
                 if ((property === 'x' || property === 'y') && this.selectedIsland.collision && this.selectedIsland.collision.length > 0) {
                     const deltaX = this.selectedIsland.x - oldX;
@@ -3630,6 +4140,9 @@ See console for detailed information.`;
                 
                 this.updateStatus(statusMessage, 'info');
                 this.render();
+                
+                // Schedule auto-save
+                this.scheduleAutoSave();
             }
             
             updateRotation(value) {
