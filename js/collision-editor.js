@@ -14,6 +14,19 @@ class MapEditor {
         this.hoverPointIndex = -1;
         this.hoverIslandId = null;
         
+        // Island selection and transformation
+        this.islandTransform = {
+            scale: 1,
+            rotation: 0,
+            originalRadius: 0
+        };
+        this.controlPointDrag = {
+            active: false,
+            type: null, // 'resize' or 'rotate'
+            startPos: { x: 0, y: 0 },
+            startValue: 0
+        };
+        
         // UI elements
         this.editorPanel = null;
         this.pointsList = null;
@@ -28,6 +41,7 @@ class MapEditor {
         this.pointRadius = 8;
         this.hoverRadius = 12;
         this.snapDistance = 10;
+        this.controlPointRadius = 10;
         
         this.setupEventListeners();
         this.createEditorUI();
@@ -92,7 +106,7 @@ class MapEditor {
                     <strong>Controls:</strong> Ctrl+E: Toggle | Shift+A: Add Point | Del: Delete Point | Ctrl+S: Save
                 </p>
                 <p style="margin: 5px 0; font-size: 11px; color: #bdc3c7;">
-                    <strong>Mouse:</strong> Click to select | Drag to move | Right-click to add point
+                    <strong>Mouse:</strong> Ctrl+Click: Select Island | Drag: Move Points/Resize/Rotate | Right-click: Add Point
                 </p>
             </div>
             
@@ -469,11 +483,31 @@ class MapEditor {
             return true;
         }
         
-        if (!this.selectedIsland) return false;
-        
         this.updateMousePosition(e);
         
-        // Check if clicking on a point
+        // Check for Ctrl+Click island selection
+        if (e.ctrlKey) {
+            const clickedIsland = this.getIslandAtMouse();
+            if (clickedIsland) {
+                this.selectIslandDirectly(clickedIsland);
+                e.preventDefault();
+                e.stopPropagation();
+                return true;
+            }
+        }
+        
+        if (!this.selectedIsland) return false;
+        
+        // Check if clicking on a control point (resize/rotate handles)
+        const controlPoint = this.getControlPointAtMouse();
+        if (controlPoint) {
+            this.startControlPointDrag(controlPoint, e);
+            e.preventDefault();
+            e.stopPropagation();
+            return true;
+        }
+        
+        // Check if clicking on a collision point
         const pointIndex = this.getPointAtMouse();
         if (pointIndex >= 0) {
             this.selectedPointIndex = pointIndex;
@@ -498,6 +532,14 @@ class MapEditor {
         if (!this.isActive) return false;
         
         this.updateMousePosition(e);
+        
+        // Handle control point dragging (resize/rotate)
+        if (this.controlPointDrag.active && this.selectedIsland) {
+            this.updateControlPointDrag();
+            e.preventDefault();
+            e.stopPropagation();
+            return true;
+        }
         
         if (this.isDragging && this.selectedPointIndex >= 0 && this.selectedIsland) {
             // Update point position
@@ -527,6 +569,15 @@ class MapEditor {
     }
     
     handleMouseUp(e) {
+        if (this.controlPointDrag.active) {
+            this.controlPointDrag.active = false;
+            this.controlPointDrag.type = null;
+            console.log('🎛️ Control point drag ended');
+            e.preventDefault();
+            e.stopPropagation();
+            return true;
+        }
+        
         if (this.isDragging) {
             this.isDragging = false;
             console.log('🎯 Point updated:', this.selectedPointIndex);
@@ -580,6 +631,169 @@ class MapEditor {
             x: worldPos.x - island.x,
             y: worldPos.y - island.y
         };
+    }
+    
+    // New methods for island selection and control points
+    getIslandAtMouse() {
+        if (!this.game.map || !this.game.map.islands) return null;
+        
+        for (let island of this.game.map.islands) {
+            const distance = Math.sqrt(
+                Math.pow(this.worldMousePos.x - island.x, 2) +
+                Math.pow(this.worldMousePos.y - island.y, 2)
+            );
+            
+            // Check if mouse is within island radius
+            if (distance <= island.radius) {
+                return island;
+            }
+        }
+        
+        return null;
+    }
+    
+    selectIslandDirectly(island) {
+        this.selectedIsland = island;
+        this.selectedPointIndex = -1;
+        
+        // Initialize transform data
+        this.islandTransform.scale = 1;
+        this.islandTransform.rotation = 0;
+        this.islandTransform.originalRadius = island.radius;
+        
+        // Update UI
+        const islandIndex = this.game.map.islands.indexOf(island);
+        this.islandSelector.value = islandIndex;
+        this.islandPropertiesSection.style.display = 'block';
+        this.updateIslandPropertiesUI();
+        this.updatePointsList();
+        this.updateCodeOutput();
+        
+        console.log('🏝️ Selected island via Ctrl+Click:', island.name);
+    }
+    
+    getControlPointAtMouse() {
+        if (!this.selectedIsland) return null;
+        
+        const island = this.selectedIsland;
+        const checkRadius = this.controlPointRadius / this.game.zoom;
+        
+        // Get control point positions
+        const controlPoints = this.getControlPointPositions(island);
+        
+        for (let controlPoint of controlPoints) {
+            const distance = Math.sqrt(
+                Math.pow(this.worldMousePos.x - controlPoint.x, 2) +
+                Math.pow(this.worldMousePos.y - controlPoint.y, 2)
+            );
+            
+            if (distance <= checkRadius) {
+                return controlPoint;
+            }
+        }
+        
+        return null;
+    }
+    
+    getControlPointPositions(island) {
+        const radius = island.radius * this.islandTransform.scale;
+        const controlPoints = [];
+        
+        // Resize control points at corners of bounding box
+        const corners = [
+            { x: island.x - radius, y: island.y - radius, type: 'resize', corner: 'nw' },
+            { x: island.x + radius, y: island.y - radius, type: 'resize', corner: 'ne' },
+            { x: island.x + radius, y: island.y + radius, type: 'resize', corner: 'se' },
+            { x: island.x - radius, y: island.y + radius, type: 'resize', corner: 'sw' }
+        ];
+        
+        // Rotation control point at top center
+        const rotatePoint = {
+            x: island.x,
+            y: island.y - radius - 30,
+            type: 'rotate'
+        };
+        
+        return [...corners, rotatePoint];
+    }
+    
+    startControlPointDrag(controlPoint, e) {
+        this.controlPointDrag.active = true;
+        this.controlPointDrag.type = controlPoint.type;
+        this.controlPointDrag.startPos = { x: this.worldMousePos.x, y: this.worldMousePos.y };
+        
+        if (controlPoint.type === 'resize') {
+            this.controlPointDrag.startValue = this.islandTransform.scale;
+        } else if (controlPoint.type === 'rotate') {
+            this.controlPointDrag.startValue = this.islandTransform.rotation;
+        }
+        
+        console.log('🎛️ Started control point drag:', controlPoint.type);
+    }
+    
+    updateControlPointDrag() {
+        if (!this.controlPointDrag.active || !this.selectedIsland) return;
+        
+        const island = this.selectedIsland;
+        const deltaX = this.worldMousePos.x - this.controlPointDrag.startPos.x;
+        const deltaY = this.worldMousePos.y - this.controlPointDrag.startPos.y;
+        
+        if (this.controlPointDrag.type === 'resize') {
+            // Calculate distance from island center to mouse for scaling
+            const currentDistance = Math.sqrt(
+                Math.pow(this.worldMousePos.x - island.x, 2) +
+                Math.pow(this.worldMousePos.y - island.y, 2)
+            );
+            const originalDistance = this.islandTransform.originalRadius;
+            
+            // Update scale
+            this.islandTransform.scale = Math.max(0.1, currentDistance / originalDistance);
+            
+            // Update island radius
+            island.radius = this.islandTransform.originalRadius * this.islandTransform.scale;
+            
+            // Update UI
+            this.updateIslandPropertiesUI();
+            
+        } else if (this.controlPointDrag.type === 'rotate') {
+            // Calculate rotation angle
+            const angle1 = Math.atan2(
+                this.controlPointDrag.startPos.y - island.y,
+                this.controlPointDrag.startPos.x - island.x
+            );
+            const angle2 = Math.atan2(
+                this.worldMousePos.y - island.y,
+                this.worldMousePos.x - island.x
+            );
+            
+            this.islandTransform.rotation = this.controlPointDrag.startValue + (angle2 - angle1);
+            
+            // Apply rotation to collision points if they exist
+            if (island.outline && island.outline.points) {
+                this.rotateIslandPoints(island, angle2 - angle1);
+            }
+        }
+    }
+    
+    rotateIslandPoints(island, rotationDelta) {
+        if (!island.outline || !island.outline.points) return;
+        
+        const cos = Math.cos(rotationDelta);
+        const sin = Math.sin(rotationDelta);
+        
+        // Rotate each collision point around island center
+        island.outline.points = island.outline.points.map(point => {
+            const rotatedX = point.x * cos - point.y * sin;
+            const rotatedY = point.x * sin + point.y * cos;
+            
+            return { x: rotatedX, y: rotatedY };
+        });
+        
+        // Update bounds
+        island.outline.bounds = this.game.map.calculateOutlineBounds(island.outline.points);
+        
+        this.updatePointsList();
+        this.updateCodeOutput();
     }
     
     getPointAtMouse() {
@@ -1503,7 +1717,12 @@ Follow the steps to update your project with the new collision boundaries.`);
             return;
         }
         
-        if (!this.selectedIsland || !this.selectedIsland.outline) return;
+        if (!this.selectedIsland) return;
+        
+        // Draw selection frame and control points first
+        this.drawSelectionFrame(ctx, this.selectedIsland);
+        
+        if (!this.selectedIsland.outline) return;
         
         const points = this.selectedIsland.outline.points;
         
@@ -1678,6 +1897,95 @@ Follow the steps to update your project with the new collision boundaries.`);
         });
         
         ctx.setLineDash([]); // Reset line dash
+    }
+    
+    // Draw selection frame with control points
+    drawSelectionFrame(ctx, island) {
+        const radius = island.radius * this.islandTransform.scale;
+        
+        // Draw selection frame (bounding box)
+        ctx.strokeStyle = '#f39c12';
+        ctx.lineWidth = Math.max(3 / this.game.zoom, 2);
+        ctx.setLineDash([8 / this.game.zoom, 4 / this.game.zoom]);
+        ctx.beginPath();
+        ctx.rect(
+            island.x - radius,
+            island.y - radius,
+            radius * 2,
+            radius * 2
+        );
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Draw control points
+        const controlPoints = this.getControlPointPositions(island);
+        
+        controlPoints.forEach(controlPoint => {
+            const size = Math.max(this.controlPointRadius / this.game.zoom, 6);
+            
+            // Different colors for different control point types
+            if (controlPoint.type === 'resize') {
+                ctx.fillStyle = '#27ae60';
+                ctx.strokeStyle = 'white';
+            } else if (controlPoint.type === 'rotate') {
+                ctx.fillStyle = '#9b59b6';
+                ctx.strokeStyle = 'white';
+            }
+            
+            ctx.lineWidth = Math.max(2 / this.game.zoom, 1);
+            
+            if (controlPoint.type === 'rotate') {
+                // Draw rotation handle as a diamond
+                ctx.save();
+                ctx.translate(controlPoint.x, controlPoint.y);
+                ctx.rotate(Math.PI / 4);
+                ctx.fillRect(-size, -size, size * 2, size * 2);
+                ctx.strokeRect(-size, -size, size * 2, size * 2);
+                ctx.restore();
+                
+                // Draw line from island center to rotation handle
+                ctx.strokeStyle = '#9b59b6';
+                ctx.lineWidth = Math.max(2 / this.game.zoom, 1);
+                ctx.setLineDash([4 / this.game.zoom, 4 / this.game.zoom]);
+                ctx.beginPath();
+                ctx.moveTo(island.x, island.y);
+                ctx.lineTo(controlPoint.x, controlPoint.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+            } else {
+                // Draw resize handles as circles
+                ctx.beginPath();
+                ctx.arc(controlPoint.x, controlPoint.y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                // Draw corner indicator
+                ctx.fillStyle = 'white';
+                ctx.font = `${Math.max(10 / this.game.zoom, 6)}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.fillText('↗', controlPoint.x, controlPoint.y + size * 0.3);
+            }
+        });
+        
+        // Draw island name with selection indicator
+        ctx.fillStyle = '#f39c12';
+        ctx.strokeStyle = 'black';
+        ctx.font = `bold ${Math.max(16 / this.game.zoom, 12)}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.lineWidth = Math.max(3 / this.game.zoom, 1);
+        const nameOffset = Math.max(20 / this.game.zoom, 15);
+        const selectionText = `${island.name || 'Island'} [SELECTED]`;
+        ctx.strokeText(selectionText, island.x, island.y - radius - nameOffset);
+        ctx.fillText(selectionText, island.x, island.y - radius - nameOffset);
+        
+        // Draw transformation info
+        if (this.islandTransform.scale !== 1 || this.islandTransform.rotation !== 0) {
+            const infoText = `Scale: ${this.islandTransform.scale.toFixed(2)} | Rotation: ${(this.islandTransform.rotation * 180 / Math.PI).toFixed(1)}°`;
+            ctx.fillStyle = 'rgba(243, 156, 18, 0.8)';
+            ctx.font = `${Math.max(12 / this.game.zoom, 8)}px Arial`;
+            ctx.fillText(infoText, island.x, island.y + radius + nameOffset);
+        }
     }
     
     // Export island data for code generation

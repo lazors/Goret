@@ -362,7 +362,7 @@
         <div class="canvas-area">
             <div class="header">
                 <h1>🗺️ GORET Map Editor</h1>
-                <div class="subtitle">Standalone Map & Collision Editor - Direct Project Integration</div>
+                <div class="subtitle">Standalone Map & Collision Editor</div>
             </div>
             
             <div class="coordinates-display" id="coordinatesDisplay">
@@ -504,27 +504,6 @@
                     <div style="text-align: center; color: #7f8c8d; font-style: italic;">
                         Select an island to edit collision points
                     </div>
-                </div>
-            </div>
-            
-            <!-- Project Integration -->
-            <div class="panel-section">
-                <div class="panel-title">Project Integration</div>
-                
-                <button class="btn btn-success" onclick="mapEditor.generateCodeWithPrompt()" id="generateCodeBtn">
-                    📋 Generate Code & Prompt
-                </button>
-                
-                <button class="btn btn-primary" onclick="mapEditor.copyImageInstructions()">
-                    📁 Copy Image Install Instructions
-                </button>
-                
-                <div class="status-indicator status-info" id="statusIndicator">
-                    Ready for editing
-                </div>
-                
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill"></div>
                 </div>
             </div>
             
@@ -964,10 +943,23 @@
                 this.updateWorldMousePos();
                 
                 if (e.button === 0) { // Left click
-                    if (this.ctrlPressed && this.selectedIsland) {
-                        // Ctrl+Click on island - start island manipulation
-                        const islandClicked = this.isPointInIsland(this.worldMousePos, this.selectedIsland);
-                        if (islandClicked) {
+                    if (this.ctrlPressed) {
+                        // Ctrl+Click - select island or manipulate selected island
+                        const clickedIsland = this.getIslandAtPosition(this.worldMousePos);
+                        
+                        if (clickedIsland) {
+                            // If we clicked on a different island, select it
+                            if (clickedIsland !== this.selectedIsland) {
+                                const islandIndex = this.islands.indexOf(clickedIsland);
+                                this.selectIslandByIndex(islandIndex);
+                                this.updateStatus(`Island "${clickedIsland.name}" selected - Ctrl+Click again to manipulate`, 'info');
+                                this.render();
+                                return;
+                            }
+                            
+                            // We clicked on the already selected island - start manipulation
+                            const islandClicked = this.isPointInIsland(this.worldMousePos, this.selectedIsland);
+                            if (islandClicked) {
                             // Determine manipulation mode based on click position
                             const island = this.selectedIsland;
                             const dx = this.worldMousePos.x - island.x;
@@ -1004,6 +996,7 @@
                             
                             this.isDragging = true;
                             this.saveUndoState();
+                            }
                         }
                     } else if (this.collisionLineMode && this.selectedIsland) {
                         // Add point in collision line mode
@@ -2315,18 +2308,25 @@ relative coordinates for your project!
             
             updateStatus(message, type = 'info') {
                 const indicator = document.getElementById('statusIndicator');
-                indicator.textContent = message;
-                indicator.className = `status-indicator status-${type}`;
-                
-                if (type === 'success') {
-                    indicator.classList.add('pulsing');
-                    setTimeout(() => indicator.classList.remove('pulsing'), 2000);
+                if (indicator) {
+                    indicator.textContent = message;
+                    indicator.className = `status-indicator status-${type}`;
+                    
+                    if (type === 'success') {
+                        indicator.classList.add('pulsing');
+                        setTimeout(() => indicator.classList.remove('pulsing'), 2000);
+                    }
+                } else {
+                    // Fallback to console if status indicator doesn't exist
+                    console.log(`Status: ${message} (${type})`);
                 }
             }
             
             setProgress(percent) {
                 const fill = document.getElementById('progressFill');
-                fill.style.width = percent + '%';
+                if (fill) {
+                    fill.style.width = percent + '%';
+                }
             }
             
             zoomIn() {
@@ -3097,21 +3097,27 @@ See console for detailed information.`;
                     this.ctx.fillText('✋ MOVE MODE', this.canvas.width - 120, this.canvas.height - 62);
                 }
                 
-                // Draw CTRL+Click instructions when CTRL is pressed
-                if (this.ctrlPressed && this.selectedIsland) {
-                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-                    this.ctx.fillRect(this.canvas.width - 280, 10, 270, 90);
-                    this.ctx.fillStyle = '#3498db';
-                    this.ctx.font = 'bold 14px Arial';
+                // Draw enhanced island editing instructions
+                if (this.ctrlPressed || (this.collisionEditor && this.collisionEditor.selectedIsland)) {
+                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+                    this.ctx.fillRect(this.canvas.width - 320, 10, 310, 130);
+                    this.ctx.fillStyle = '#f39c12';
+                    this.ctx.font = 'bold 16px Arial';
                     this.ctx.textAlign = 'left';
-                    this.ctx.fillText('CTRL+Click Controls:', this.canvas.width - 275, 30);
+                    this.ctx.fillText('🗺️ Enhanced Island Editor', this.canvas.width - 315, 30);
                     
                     this.ctx.font = '12px Arial';
                     this.ctx.fillStyle = '#ffffff';
-                    this.ctx.fillText('• Center: Move island', this.canvas.width - 275, 50);
-                    this.ctx.fillText('• Near edges: Resize island', this.canvas.width - 275, 65);
-                    this.ctx.fillText('• CTRL+SHIFT: Rotate island', this.canvas.width - 275, 80);
-                    this.ctx.fillText('• Release to finish', this.canvas.width - 275, 95);
+                    this.ctx.fillText('• CTRL+Click: Select any island', this.canvas.width - 315, 50);
+                    this.ctx.fillStyle = '#27ae60';
+                    this.ctx.fillText('• Green corners: Drag to resize', this.canvas.width - 315, 65);
+                    this.ctx.fillStyle = '#9b59b6';
+                    this.ctx.fillText('• Purple diamond: Drag to rotate', this.canvas.width - 315, 80);
+                    this.ctx.fillStyle = '#3498db';
+                    this.ctx.fillText('• Blue dots: Edit collision points', this.canvas.width - 315, 95);
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.fillText('• Right-click: Add collision point', this.canvas.width - 315, 110);
+                    this.ctx.fillText('• Del key: Delete selected point', this.canvas.width - 315, 125);
                 }
             }
         
@@ -3214,6 +3220,17 @@ See console for detailed information.`;
                        point.y <= island.y + height;
             }
             
+            getIslandAtPosition(point) {
+                // Check islands in reverse order (top to bottom rendering)
+                for (let i = this.islands.length - 1; i >= 0; i--) {
+                    const island = this.islands[i];
+                    if (this.isPointInIsland(point, island)) {
+                        return island;
+                    }
+                }
+                return null;
+            }
+            
             updateIslandFormValues() {
                 if (!this.selectedIsland) return;
                 
@@ -3312,109 +3329,8 @@ See console for detailed information.`;
                 link.click();
                 
                 this.updateStatus(`Downloaded ${this.selectedIsland.name} image`, 'success');
-                
-                // Show instructions
-                setTimeout(() => {
-                    this.copyImageInstructions();
-                }, 500);
             }
             
-            copyImageInstructions() {
-                const instructions = `Island Image Installation Instructions:
-
-1. Download the island image (if not already done)
-2. Move the downloaded image to: assets/Islands/
-3. Rename the file to match the island name (e.g., "Saint_Kitts.png")
-4. The image will be automatically loaded when the game starts
-
-Note: Since this is a client-side editor, you need to manually place the image in your project folder.`;
-                
-                navigator.clipboard.writeText(instructions);
-                this.updateStatus('Installation instructions copied to clipboard!', 'success');
-                alert(instructions);
-            }
-            
-            generateCodeWithPrompt() {
-                if (!this.selectedIsland) {
-                    this.updateStatus('Please select an island first', 'warning');
-                    return;
-                }
-                
-                const island = this.selectedIsland;
-                const hasCollision = island.collision && island.collision.length > 0;
-                
-                // Generate the complete code and prompt
-                let output = `=== ISLAND CONFIGURATION CODE ===\n\n`;
-                output += `Island Name: ${island.name}\n`;
-                output += `Position: (${island.x}, ${island.y})\n`;
-                output += `Dimensions: ${island.width}x${island.height} pixels\n`;
-                output += `Collision Radius: ${island.radius}\n`;
-                output += `Rotation: ${island.rotation || 0}°\n\n`;
-                
-                output += `=== INSTRUCTIONS FOR ADDING TO GAME ===\n\n`;
-                output += `1. Save island image as: assets/Islands/${island.name.replace(/\s+/g, '_')}.png\n\n`;
-                
-                output += `2. Add to islandConfigurations in js/map.js:\n\n`;
-                output += `{
-`;
-                output += `    name: '${island.name}',
-`;
-                output += `    x: ${island.x},
-`;
-                output += `    y: ${island.y},
-`;
-                output += `    radius: ${island.radius},
-`;
-                output += `    width: ${island.width},
-`;
-                output += `    height: ${island.height},
-`;
-                output += `    hasCustomOutline: ${hasCollision}\n`;
-                output += `}\n\n`;
-                
-                if (hasCollision) {
-                    output += `3. Add collision outline to generateCustomOutline() method:\n\n`;
-                    output += `if (island.name === '${island.name}') {\n`;
-                    output += `    const points = [\n`;
-                    
-                    // Convert to relative coordinates
-                    island.collision.forEach((point, index) => {
-                        const relX = point.x - island.x;
-                        const relY = point.y - island.y;
-                        const comma = index < island.collision.length - 1 ? ',' : '';
-                        output += `        { x: ${relX.toFixed(1)}, y: ${relY.toFixed(1)} }${comma}\n`;
-                    });
-                    
-                    output += `    ];\n`;
-                    output += `    return {\n`;
-                    output += `        points: points,\n`;
-                    output += `        bounds: this.calculateOutlineBounds(points)\n`;
-                    output += `    };\n`;
-                    output += `}\n\n`;
-                }
-                
-                output += `=== PROMPT FOR AI ASSISTANT ===\n\n`;
-                output += `Please help me add a new island to the GORET game:\n\n`;
-                output += `1. The island should be named "${island.name}" and positioned at (${island.x}, ${island.y})\n`;
-                output += `2. It should have dimensions of ${island.width}x${island.height} pixels\n`;
-                output += `3. The collision detection radius should be ${island.radius} pixels\n`;
-                
-                if (hasCollision) {
-                    output += `4. It has a custom collision outline with ${island.collision.length} points (provided above)\n`;
-                } else {
-                    output += `4. It should use circular collision detection (no custom outline)\n`;
-                }
-                
-                output += `\nPlease update the necessary files to integrate this island into the game.`;
-                
-                // Copy to clipboard
-                navigator.clipboard.writeText(output);
-                this.updateStatus('Code and prompt copied to clipboard!', 'success');
-                
-                // Show preview
-                const preview = output.substring(0, 500) + '...\n\n[Full content copied to clipboard]';
-                alert(preview);
-            }
             
             toggleWorldBackground() {
                 this.showWorldBackground = !this.showWorldBackground;
@@ -3442,6 +3358,120 @@ Note: Since this is a client-side editor, you need to manually place the image i
         let mapEditor;
         window.addEventListener('DOMContentLoaded', () => {
             mapEditor = new StandaloneMapEditor();
+            window.mapEditor = mapEditor; // Make it globally accessible
+        });
+    </script>
+    
+    <!-- Include the collision editor for enhanced functionality -->
+    <script src="js/collision-editor.js"></script>
+    
+    <script>
+        // Integrate collision editor with standalone map editor
+        window.addEventListener('DOMContentLoaded', () => {
+            // Wait for the map editor to be fully initialized
+            setTimeout(() => {
+                if (window.mapEditor && window.MapEditor) {
+                    const mapEditor = window.mapEditor;
+                // Add the calculateOutlineBounds method to the map editor if it doesn't exist
+                if (!mapEditor.calculateOutlineBounds) {
+                    mapEditor.calculateOutlineBounds = function(points) {
+                        let minX = Infinity, minY = Infinity;
+                        let maxX = -Infinity, maxY = -Infinity;
+                        
+                        points.forEach(point => {
+                            minX = Math.min(minX, point.x);
+                            minY = Math.min(minY, point.y);
+                            maxX = Math.max(maxX, point.x);
+                            maxY = Math.max(maxY, point.y);
+                        });
+                        
+                        return { minX, minY, maxX, maxY };
+                    };
+                }
+                
+                // Create a mock game object for the collision editor
+                const mockGame = {
+                    canvas: mapEditor.canvas,
+                    zoom: mapEditor.zoom,
+                    cameraX: -mapEditor.offsetX,
+                    cameraY: -mapEditor.offsetY,
+                    map: {
+                        islands: mapEditor.islands,
+                        calculateOutlineBounds: mapEditor.calculateOutlineBounds.bind(mapEditor)
+                    }
+                };
+                
+                // Initialize collision editor with mock game
+                mapEditor.collisionEditor = new MapEditor(mockGame);
+                mapEditor.collisionEditor.isActive = true; // Always active in standalone editor
+                
+                // Override some methods to work with standalone editor
+                mapEditor.originalHandleMouseDown = mapEditor.handleMouseDown.bind(mapEditor);
+                mapEditor.handleMouseDown = function(e) {
+                    // Update mock game state
+                    mockGame.zoom = this.zoom;
+                    mockGame.cameraX = -this.offsetX;
+                    mockGame.cameraY = -this.offsetY;
+                    
+                    // Try collision editor first
+                    if (this.collisionEditor.handleMouseDown(e)) {
+                        return;
+                    }
+                    
+                    // Fall back to original handler
+                    this.originalHandleMouseDown(e);
+                };
+                
+                mapEditor.originalHandleMouseMove = mapEditor.handleMouseMove.bind(mapEditor);
+                mapEditor.handleMouseMove = function(e) {
+                    // Update mock game state
+                    mockGame.zoom = this.zoom;
+                    mockGame.cameraX = -this.offsetX;
+                    mockGame.cameraY = -this.offsetY;
+                    
+                    // Try collision editor first
+                    if (this.collisionEditor.handleMouseMove(e)) {
+                        return;
+                    }
+                    
+                    // Fall back to original handler
+                    this.originalHandleMouseMove(e);
+                };
+                
+                mapEditor.originalHandleMouseUp = mapEditor.handleMouseUp.bind(mapEditor);
+                mapEditor.handleMouseUp = function(e) {
+                    // Update mock game state
+                    mockGame.zoom = this.zoom;
+                    mockGame.cameraX = -this.offsetX;
+                    mockGame.cameraY = -this.offsetY;
+                    
+                    // Try collision editor first
+                    if (this.collisionEditor.handleMouseUp(e)) {
+                        return;
+                    }
+                    
+                    // Fall back to original handler
+                    this.originalHandleMouseUp(e);
+                };
+                
+                // Add collision editor overlay to render method
+                mapEditor.originalRender = mapEditor.render.bind(mapEditor);
+                mapEditor.render = function() {
+                    this.originalRender();
+                    
+                    // Update mock game state
+                    mockGame.zoom = this.zoom;
+                    mockGame.cameraX = -this.offsetX;
+                    mockGame.cameraY = -this.offsetY;
+                    
+                    // Draw collision editor overlay
+                    this.collisionEditor.drawEditorOverlay(this.ctx);
+                };
+                
+                console.log('🗺️ Enhanced Map Editor loaded with island selection capabilities');
+                console.log('💡 Ctrl+Click on islands to select them for editing');
+                }
+            }, 100); // Wait 100ms for mapEditor to initialize
         });
     </script>
 </body>

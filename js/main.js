@@ -25,7 +25,6 @@ class Game {
         this.map = null;
         this.ship = null;
         this.collisionManager = null;
-        this.mapEditor = null;
         this.portManager = null;
         
         // Game state
@@ -341,9 +340,6 @@ class Game {
         
         // Initialize port manager
         this.portManager = new PortManager(this);
-        
-        // Initialize collision editor for debug mode
-        this.mapEditor = new MapEditor(this);
     }
     
     gameLoop(currentTime = 0) {
@@ -458,10 +454,6 @@ class Game {
             this.collisionManager.drawDebugInfo(this.ctx);
         }
         
-        // Render collision editor overlay
-        if (this.mapEditor && this.mapEditor.isActive) {
-            this.mapEditor.drawEditorOverlay(this.ctx);
-        }
         
         this.ctx.restore();
     }
