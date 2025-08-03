@@ -355,6 +355,69 @@
             color: #3498db;
             margin: 0 2px;
         }
+        
+        /* Custom slider styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            background: rgba(52, 152, 219, 0.3);
+            border-radius: 3px;
+            outline: none;
+            transition: background 0.3s;
+        }
+        
+        input[type="range"]:hover {
+            background: rgba(52, 152, 219, 0.5);
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #3498db;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #2980b9;
+            transform: scale(1.2);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #3498db;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            border: none;
+        }
+        
+        input[type="range"]::-moz-range-thumb:hover {
+            background: #2980b9;
+            transform: scale(1.2);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+        }
+        
+        /* Active state for slider when radius is being adjusted */
+        input[type="range"]:focus {
+            background: rgba(231, 76, 60, 0.3);
+        }
+        
+        input[type="range"]:focus::-webkit-slider-thumb {
+            background: #e74c3c;
+        }
+        
+        input[type="range"]:focus::-moz-range-thumb {
+            background: #e74c3c;
+        }
     </style>
 </head>
 <body>
@@ -417,14 +480,17 @@
                 
                 <!-- Image Dimensions -->
                 <div class="section-header">📐 Image Dimensions</div>
+                <div style="font-size: 11px; color: #95a5a6; margin-bottom: 5px;">
+                    💡 Tip: Use mouse wheel on inputs or Shift+Wheel on island
+                </div>
                 <div class="input-row">
                     <div class="input-group" style="flex: 1; margin-right: 10px;">
                         <label>Width</label>
-                        <input type="number" id="islandWidth" value="800" min="100" max="2000" oninput="mapEditor.updateIslandProperty('width', this.value)">
+                        <input type="number" id="islandWidth" value="800" min="100" max="2000" oninput="mapEditor.updateIslandProperty('width', this.value)" title="Use mouse wheel to adjust">
                     </div>
                     <div class="input-group" style="flex: 1;">
                         <label>Height</label>
-                        <input type="number" id="islandHeight" value="600" min="100" max="2000" oninput="mapEditor.updateIslandProperty('height', this.value)">
+                        <input type="number" id="islandHeight" value="600" min="100" max="2000" oninput="mapEditor.updateIslandProperty('height', this.value)" title="Use mouse wheel to adjust">
                     </div>
                 </div>
                 
@@ -447,9 +513,21 @@
                 
                 <!-- Collision -->
                 <div class="section-header">💥 Collision</div>
+                <div style="font-size: 11px; color: #95a5a6; margin-bottom: 5px;">
+                    💡 Tip: Use mouse wheel or drag slider to adjust
+                </div>
                 <div class="input-group">
                     <label>Radius (collision)</label>
-                    <input type="number" id="islandRadius" value="150" oninput="mapEditor.updateIslandProperty('radius', this.value)">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="range" id="islandRadiusSlider" min="50" max="500" value="150" 
+                               style="flex: 1; cursor: pointer;" 
+                               oninput="mapEditor.updateRadiusFromSlider(this.value)"
+                               title="Drag to adjust radius">
+                        <input type="number" id="islandRadius" value="150" min="50" max="500" 
+                               style="width: 70px;" 
+                               oninput="mapEditor.updateRadiusFromInput(this.value)" 
+                               title="Use mouse wheel to adjust">
+                    </div>
                 </div>
                 
                 <button class="btn btn-success" onclick="mapEditor.addIsland()">
@@ -780,12 +858,47 @@
                         y: 2493,    // Game world Y coordinate
                         width: 2325,
                         height: 2324,
-                        radius: 600, // Collision radius from game
+                        radius: 446, // Updated collision radius based on detailed collision work
                         rotation: 0, // Default rotation
                         image: null, // Will be loaded if available
                         originalImageData: null,
                         isExisting: true,  // Mark as existing game island
-                        collision: [] // No collision points defined yet
+                        collision: [
+                            { x: 2489, y: 2414.5 },   // Relative: (-210, -78.5)
+                            { x: 2546.1, y: 2334.5 }, // Relative: (-152.9, -158.5)
+                            { x: 2536, y: 2312.9 },   // Relative: (-163, -180.1)
+                            { x: 2569, y: 2274.8 },   // Relative: (-130, -218.2)
+                            { x: 2565.8, y: 2262.1 }, // Relative: (-133.2, -230.9)
+                            { x: 2582.3, y: 2231 },   // Relative: (-116.7, -262)
+                            { x: 2614.1, y: 2239.3 }, // Relative: (-84.9, -253.7)
+                            { x: 2645.2, y: 2230.4 }, // Relative: (-53.8, -262.6)
+                            { x: 2666.8, y: 2230.4 }, // Relative: (-32.2, -262.6)
+                            { x: 2710.9, y: 2224.7 }, // Relative: (11.9, -268.3)
+                            { x: 2746, y: 2249.7 },   // Relative: (47, -243.3)
+                            { x: 2784, y: 2273.8 },   // Relative: (85, -219.2)
+                            { x: 2858.2, y: 2306.8 }, // Relative: (159.2, -186.2)
+                            { x: 2885.2, y: 2351.9 }, // Relative: (186.2, -141.1)
+                            { x: 2914.3, y: 2384 },   // Relative: (215.3, -109)
+                            { x: 2909.3, y: 2448.1 }, // Relative: (210.3, -44.9)
+                            { x: 2921.3, y: 2499.2 }, // Relative: (222.3, 6.2)
+                            { x: 2929.3, y: 2567.4 }, // Relative: (230.3, 74.4)
+                            { x: 2919.3, y: 2593.4 }, // Relative: (220.3, 100.4)
+                            { x: 2909.3, y: 2643.5 }, // Relative: (210.3, 150.5)
+                            { x: 2888.2, y: 2728.7 }, // Relative: (189.2, 235.7)
+                            { x: 2833.4, y: 2746.1 }, // Relative: (134.4, 253.1)
+                            { x: 2808, y: 2736.6 },   // Relative: (109, 243.6)
+                            { x: 2705.1, y: 2764.5 }, // Relative: (6.1, 271.5)
+                            { x: 2671.4, y: 2804.5 }, // Relative: (-27.6, 311.5)
+                            { x: 2606, y: 2804.5 },   // Relative: (-93, 311.5)
+                            { x: 2569.7, y: 2766.3 }, // Relative: (-129.3, 273.3)
+                            { x: 2524, y: 2740.3 },   // Relative: (-175, 247.3)
+                            { x: 2518.9, y: 2709.2 }, // Relative: (-180.1, 216.2)
+                            { x: 2501.7, y: 2678.7 }, // Relative: (-197.3, 185.7)
+                            { x: 2457.9, y: 2655.2 }, // Relative: (-241.1, 162.2)
+                            { x: 2475.7, y: 2617.8 }, // Relative: (-223.3, 124.8)
+                            { x: 2490.3, y: 2542.2 }, // Relative: (-208.7, 49.2)
+                            { x: 2485.2, y: 2442.5 }  // Relative: (-213.8, -50.5)
+                        ] // Updated with your detailed collision points
                     }
                 ];
                 
@@ -934,6 +1047,84 @@
                 
                 // Window resize
                 window.addEventListener('resize', () => this.handleResize());
+                
+                // Add wheel events for size adjustment
+                this.setupSizeAdjustmentListeners();
+            }
+            
+            setupSizeAdjustmentListeners() {
+                // Width input wheel adjustment
+                const widthInput = document.getElementById('islandWidth');
+                const heightInput = document.getElementById('islandHeight');
+                const radiusInput = document.getElementById('islandRadius');
+                
+                if (widthInput) {
+                    widthInput.addEventListener('wheel', (e) => {
+                        e.preventDefault();
+                        if (!this.selectedIsland) return;
+                        
+                        const delta = e.deltaY > 0 ? -10 : 10;
+                        const newValue = Math.max(100, Math.min(2000, parseInt(widthInput.value) + delta));
+                        widthInput.value = newValue;
+                        this.updateIslandProperty('width', newValue);
+                    });
+                }
+                
+                if (heightInput) {
+                    heightInput.addEventListener('wheel', (e) => {
+                        e.preventDefault();
+                        if (!this.selectedIsland) return;
+                        
+                        const delta = e.deltaY > 0 ? -10 : 10;
+                        const newValue = Math.max(100, Math.min(2000, parseInt(heightInput.value) + delta));
+                        heightInput.value = newValue;
+                        this.updateIslandProperty('height', newValue);
+                    });
+                }
+                
+                if (radiusInput) {
+                    radiusInput.addEventListener('wheel', (e) => {
+                        e.preventDefault();
+                        if (!this.selectedIsland) return;
+                        
+                        const delta = e.deltaY > 0 ? -5 : 5; // Smaller increments for radius
+                        const newValue = Math.max(50, Math.min(500, parseInt(radiusInput.value) + delta));
+                        radiusInput.value = newValue;
+                        this.updateIslandProperty('radius', newValue);
+                    });
+                }
+                
+                // Also add wheel adjustment when hovering over selected island with Shift key
+                this.canvas.addEventListener('wheel', (e) => {
+                    if (e.shiftKey && this.selectedIsland && !e.ctrlKey) {
+                        e.preventDefault();
+                        
+                        // Check if mouse is over the selected island
+                        const islandBounds = {
+                            left: (this.selectedIsland.x - this.selectedIsland.width / 2) * this.zoom + this.offsetX,
+                            right: (this.selectedIsland.x + this.selectedIsland.width / 2) * this.zoom + this.offsetX,
+                            top: (this.selectedIsland.y - this.selectedIsland.height / 2) * this.zoom + this.offsetY,
+                            bottom: (this.selectedIsland.y + this.selectedIsland.height / 2) * this.zoom + this.offsetY
+                        };
+                        
+                        if (this.mousePos.x >= islandBounds.left && this.mousePos.x <= islandBounds.right &&
+                            this.mousePos.y >= islandBounds.top && this.mousePos.y <= islandBounds.bottom) {
+                            
+                            const scaleFactor = e.deltaY > 0 ? 0.95 : 1.05;
+                            const newWidth = Math.max(100, Math.min(2000, this.selectedIsland.width * scaleFactor));
+                            const newHeight = Math.max(100, Math.min(2000, this.selectedIsland.height * scaleFactor));
+                            
+                            this.updateIslandProperty('width', newWidth);
+                            this.updateIslandProperty('height', newHeight);
+                            
+                            // Update input fields
+                            document.getElementById('islandWidth').value = Math.round(newWidth);
+                            document.getElementById('islandHeight').value = Math.round(newHeight);
+                            
+                            this.updateStatus('💡 Shift+Scroll to resize island', 'info');
+                        }
+                    }
+                }, { passive: false });
             }
             
             handleMouseDown(e) {
@@ -1079,20 +1270,58 @@
                         document.getElementById('islandRotationValue').value = Math.round(this.selectedIsland.rotation);
                     } else if (this.islandDragStart && this.selectedIsland) {
                         // Drag entire island
+                        const oldX = this.selectedIsland.x;
+                        const oldY = this.selectedIsland.y;
+                        
                         this.selectedIsland.x = this.worldMousePos.x - this.islandDragStart.x;
                         this.selectedIsland.y = this.worldMousePos.y - this.islandDragStart.y;
+                        
+                        // Move collision points with the island
+                        if (this.selectedIsland.collision && this.selectedIsland.collision.length > 0) {
+                            const deltaX = this.selectedIsland.x - oldX;
+                            const deltaY = this.selectedIsland.y - oldY;
+                            
+                            this.selectedIsland.collision.forEach(point => {
+                                point.x += deltaX;
+                                point.y += deltaY;
+                            });
+                            
+                            this.updateCollisionPointsList();
+                        }
+                        
                         this.updateIslandFormValues();
                     } else if (this.selectedPointIndex !== -1 && this.selectedIsland) {
-                        // Drag collision point
+                        // Drag collision point - account for island rotation
                         if (!this.pointDragStarted) {
                             this.saveUndoState();
                             this.pointDragStarted = true;
                         }
                         
-                        this.selectedIsland.collision[this.selectedPointIndex] = {
-                            x: this.worldMousePos.x,
-                            y: this.worldMousePos.y
-                        };
+                        // If island is rotated, we need to apply inverse rotation to the mouse position
+                        const rotation = (this.selectedIsland.rotation || 0) * Math.PI / 180;
+                        const centerX = this.selectedIsland.x;
+                        const centerY = this.selectedIsland.y;
+                        
+                        if (rotation !== 0) {
+                            // Apply inverse rotation to get the unrotated world position
+                            const relX = this.worldMousePos.x - centerX;
+                            const relY = this.worldMousePos.y - centerY;
+                            
+                            const unrotatedX = relX * Math.cos(-rotation) - relY * Math.sin(-rotation);
+                            const unrotatedY = relX * Math.sin(-rotation) + relY * Math.cos(-rotation);
+                            
+                            this.selectedIsland.collision[this.selectedPointIndex] = {
+                                x: unrotatedX + centerX,
+                                y: unrotatedY + centerY
+                            };
+                        } else {
+                            // No rotation, use direct world position
+                            this.selectedIsland.collision[this.selectedPointIndex] = {
+                                x: this.worldMousePos.x,
+                                y: this.worldMousePos.y
+                            };
+                        }
+                        
                         this.updateCollisionPointsList();
                     } else {
                         // Pan view
@@ -1248,14 +1477,34 @@
             getPointAtMouse() {
                 if (!this.selectedIsland || !this.selectedIsland.collision) return -1;
                 
+                const rotation = (this.selectedIsland.rotation || 0) * Math.PI / 180; // Convert to radians
+                const centerX = this.selectedIsland.x;
+                const centerY = this.selectedIsland.y;
+                
+                // Helper function to rotate a point around the island center
+                const rotatePoint = (point) => {
+                    // Translate point to origin (relative to island center)
+                    const relX = point.x - centerX;
+                    const relY = point.y - centerY;
+                    
+                    // Apply rotation
+                    const rotatedX = relX * Math.cos(rotation) - relY * Math.sin(rotation);
+                    const rotatedY = relX * Math.sin(rotation) + relY * Math.cos(rotation);
+                    
+                    // Translate back and convert to screen coordinates
+                    return {
+                        x: (rotatedX + centerX) * this.zoom + this.offsetX,
+                        y: (rotatedY + centerY) * this.zoom + this.offsetY
+                    };
+                };
+                
                 for (let i = 0; i < this.selectedIsland.collision.length; i++) {
                     const point = this.selectedIsland.collision[i];
-                    const screenX = point.x * this.zoom + this.offsetX;
-                    const screenY = point.y * this.zoom + this.offsetY;
+                    const rotatedPoint = rotatePoint(point);
                     
                     const distance = Math.sqrt(
-                        Math.pow(this.mousePos.x - screenX, 2) + 
-                        Math.pow(this.mousePos.y - screenY, 2)
+                        Math.pow(this.mousePos.x - rotatedPoint.x, 2) + 
+                        Math.pow(this.mousePos.y - rotatedPoint.y, 2)
                     );
                     
                     if (distance <= this.pointRadius + 5) {
@@ -1279,9 +1528,32 @@
                 // Save state for undo
                 this.saveUndoState();
                 
+                // Account for island rotation when adding points
+                const rotation = (this.selectedIsland.rotation || 0) * Math.PI / 180;
+                const centerX = this.selectedIsland.x;
+                const centerY = this.selectedIsland.y;
+                
+                let pointX, pointY;
+                
+                if (rotation !== 0) {
+                    // Apply inverse rotation to get the unrotated world position
+                    const relX = this.worldMousePos.x - centerX;
+                    const relY = this.worldMousePos.y - centerY;
+                    
+                    const unrotatedX = relX * Math.cos(-rotation) - relY * Math.sin(-rotation);
+                    const unrotatedY = relX * Math.sin(-rotation) + relY * Math.cos(-rotation);
+                    
+                    pointX = unrotatedX + centerX;
+                    pointY = unrotatedY + centerY;
+                } else {
+                    // No rotation, use direct world position
+                    pointX = this.worldMousePos.x;
+                    pointY = this.worldMousePos.y;
+                }
+                
                 this.selectedIsland.collision.push({
-                    x: this.worldMousePos.x,
-                    y: this.worldMousePos.y
+                    x: pointX,
+                    y: pointY
                 });
                 
                 this.updateCollisionPointsList();
@@ -1547,6 +1819,7 @@
                 document.getElementById('islandWidth').value = this.selectedIsland.width || 800;
                 document.getElementById('islandHeight').value = this.selectedIsland.height || 600;
                 document.getElementById('islandRadius').value = this.selectedIsland.radius;
+                document.getElementById('islandRadiusSlider').value = this.selectedIsland.radius; // Sync slider
                 document.getElementById('islandRotation').value = this.selectedIsland.rotation || 0;
                 document.getElementById('islandRotationValue').value = this.selectedIsland.rotation || 0;
                 
@@ -2503,7 +2776,7 @@ relative coordinates for your project!
                             height: island.height,
                             radius: island.radius,
                             rotation: island.rotation || 0,
-                            collision: Array.isArray(island.collision) ? [...island.collision] : [],
+                            collision: Array.isArray(island.collision) ? island.collision.map(point => ({...point})) : [],
                             isExisting: island.isExisting,
                             originalImageData: island.originalImageData,
                             imagePath: island.imagePath // Preserve image path for proper reloading
@@ -2545,7 +2818,7 @@ relative coordinates for your project!
                             height: island.height,
                             radius: island.radius,
                             rotation: island.rotation || 0,
-                            collision: Array.isArray(island.collision) ? [...island.collision] : [],
+                            collision: Array.isArray(island.collision) ? island.collision.map(point => ({...point})) : [],
                             isExisting: island.isExisting,
                             originalImageData: island.originalImageData,
                             imagePath: island.imagePath // Preserve image path for proper reloading
@@ -2627,6 +2900,18 @@ relative coordinates for your project!
                     this.updateCollisionPointsList();
                     this.selectedPointIndex = -1;
                     this.updateUndoButton();
+                    
+                    // Update form controls to reflect restored island state
+                    if (this.selectedIsland) {
+                        document.getElementById('islandX').value = this.selectedIsland.x;
+                        document.getElementById('islandY').value = this.selectedIsland.y;
+                        document.getElementById('islandWidth').value = this.selectedIsland.width || 800;
+                        document.getElementById('islandHeight').value = this.selectedIsland.height || 600;
+                        document.getElementById('islandRadius').value = this.selectedIsland.radius;
+                        document.getElementById('islandRadiusSlider').value = this.selectedIsland.radius;
+                        document.getElementById('islandRotation').value = this.selectedIsland.rotation || 0;
+                        document.getElementById('islandRotationValue').value = this.selectedIsland.rotation || 0;
+                    }
                     
                     this.updateStatus(`Undo completed (${this.undoStack.length - 1} more available)`, 'success');
                     this.render();
@@ -2944,12 +3229,37 @@ See console for detailed information.`;
                 this.ctx.restore();
                 
                 // Draw island collision radius outline
-                this.ctx.strokeStyle = isSelected ? '#3498db' : '#2ecc71';
-                this.ctx.lineWidth = isSelected ? 3 : 2;
-                this.ctx.setLineDash([5, 5]);
-                this.ctx.beginPath();
-                this.ctx.arc(screenX, screenY, screenRadius, 0, Math.PI * 2);
-                this.ctx.stroke();
+                // Check if radius is being actively adjusted
+                const radiusInput = document.getElementById('islandRadius');
+                const isRadiusActive = isSelected && radiusInput && radiusInput === document.activeElement;
+                
+                if (isRadiusActive) {
+                    // Enhanced visualization when adjusting radius
+                    this.ctx.strokeStyle = '#e74c3c'; // Red when active
+                    this.ctx.lineWidth = 4;
+                    this.ctx.setLineDash([10, 5]);
+                    
+                    // Draw filled transparent circle
+                    this.ctx.fillStyle = 'rgba(231, 76, 60, 0.1)';
+                    this.ctx.beginPath();
+                    this.ctx.arc(screenX, screenY, screenRadius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                    
+                    // Draw radius value
+                    this.ctx.fillStyle = '#e74c3c';
+                    this.ctx.font = 'bold 14px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(`R: ${Math.round(island.radius)}`, screenX, screenY);
+                } else {
+                    // Normal visualization
+                    this.ctx.strokeStyle = isSelected ? '#3498db' : '#2ecc71';
+                    this.ctx.lineWidth = isSelected ? 3 : 2;
+                    this.ctx.setLineDash([5, 5]);
+                    this.ctx.beginPath();
+                    this.ctx.arc(screenX, screenY, screenRadius, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                }
                 this.ctx.setLineDash([]);
                 
                 // Draw island name and info
@@ -2981,33 +3291,48 @@ See console for detailed information.`;
                 if (!island.collision || island.collision.length < 2) return;
                 
                 const isSelected = island === this.selectedIsland;
+                const rotation = (island.rotation || 0) * Math.PI / 180; // Convert to radians
+                const centerX = island.x;
+                const centerY = island.y;
                 
-                // Draw collision outline
+                // Helper function to rotate a point around the island center
+                const rotatePoint = (point) => {
+                    // Translate point to origin (relative to island center)
+                    const relX = point.x - centerX;
+                    const relY = point.y - centerY;
+                    
+                    // Apply rotation
+                    const rotatedX = relX * Math.cos(rotation) - relY * Math.sin(rotation);
+                    const rotatedY = relX * Math.sin(rotation) + relY * Math.cos(rotation);
+                    
+                    // Translate back and convert to screen coordinates
+                    return {
+                        x: (rotatedX + centerX) * this.zoom + this.offsetX,
+                        y: (rotatedY + centerY) * this.zoom + this.offsetY
+                    };
+                };
+                
+                // Draw collision outline with rotation
                 this.ctx.strokeStyle = isSelected ? '#e74c3c' : '#f39c12';
                 this.ctx.lineWidth = isSelected ? 2 : 1;
                 this.ctx.beginPath();
                 
-                const firstPoint = island.collision[0];
-                this.ctx.moveTo(
-                    firstPoint.x * this.zoom + this.offsetX,
-                    firstPoint.y * this.zoom + this.offsetY
-                );
+                const firstPoint = rotatePoint(island.collision[0]);
+                this.ctx.moveTo(firstPoint.x, firstPoint.y);
                 
                 for (let i = 1; i < island.collision.length; i++) {
-                    const point = island.collision[i];
-                    this.ctx.lineTo(
-                        point.x * this.zoom + this.offsetX,
-                        point.y * this.zoom + this.offsetY
-                    );
+                    const rotatedPoint = rotatePoint(island.collision[i]);
+                    this.ctx.lineTo(rotatedPoint.x, rotatedPoint.y);
                 }
                 
                 this.ctx.closePath();
                 this.ctx.stroke();
                 
-                // Draw collision points
+                // Draw collision points with rotation
                 island.collision.forEach((point, index) => {
-                    const screenX = point.x * this.zoom + this.offsetX;
-                    const screenY = point.y * this.zoom + this.offsetY;
+                    const rotatedPoint = rotatePoint(point);
+                    const screenX = rotatedPoint.x;
+                    const screenY = rotatedPoint.y;
                     
                     let pointColor = '#3498db';
                     let radius = this.pointRadius;
@@ -3244,7 +3569,51 @@ See console for detailed information.`;
                 const numValue = parseFloat(value);
                 if (isNaN(numValue)) return;
                 
+                // Save undo state before making changes
+                this.saveUndoState();
+                
+                // Store old position for collision point updates
+                const oldX = this.selectedIsland.x;
+                const oldY = this.selectedIsland.y;
+                
                 this.selectedIsland[property] = numValue;
+                
+                // If position changed, move collision points with the island
+                if ((property === 'x' || property === 'y') && this.selectedIsland.collision && this.selectedIsland.collision.length > 0) {
+                    const deltaX = this.selectedIsland.x - oldX;
+                    const deltaY = this.selectedIsland.y - oldY;
+                    
+                    this.selectedIsland.collision.forEach(point => {
+                        point.x += deltaX;
+                        point.y += deltaY;
+                    });
+                    
+                    this.updateCollisionPointsList();
+                }
+                
+                // Update status message based on property
+                let statusMessage = '';
+                switch(property) {
+                    case 'width':
+                        statusMessage = `Island width set to ${numValue}px`;
+                        break;
+                    case 'height':
+                        statusMessage = `Island height set to ${numValue}px`;
+                        break;
+                    case 'x':
+                        statusMessage = `Island X position set to ${numValue}`;
+                        break;
+                    case 'y':
+                        statusMessage = `Island Y position set to ${numValue}`;
+                        break;
+                    case 'radius':
+                        statusMessage = `Island collision radius set to ${numValue}`;
+                        break;
+                    default:
+                        statusMessage = `Island ${property} updated`;
+                }
+                
+                this.updateStatus(statusMessage, 'info');
                 this.render();
             }
             
@@ -3292,6 +3661,32 @@ See console for detailed information.`;
                 
                 this.render();
                 this.updateStatus('Island dimensions reset to original size', 'success');
+            }
+            
+            updateRadiusFromSlider(value) {
+                if (!this.selectedIsland) return;
+                
+                const numValue = parseFloat(value);
+                if (isNaN(numValue)) return;
+                
+                // Update the number input to match
+                document.getElementById('islandRadius').value = numValue;
+                
+                // Update the island property
+                this.updateIslandProperty('radius', numValue);
+            }
+            
+            updateRadiusFromInput(value) {
+                if (!this.selectedIsland) return;
+                
+                const numValue = parseFloat(value);
+                if (isNaN(numValue)) return;
+                
+                // Update the slider to match
+                document.getElementById('islandRadiusSlider').value = numValue;
+                
+                // Update the island property
+                this.updateIslandProperty('radius', numValue);
             }
             
             rotateSelected(degrees) {
