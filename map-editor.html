@@ -175,6 +175,24 @@
             border-color: #3498db;
             box-shadow: 0 0 8px rgba(52, 152, 219, 0.3);
         }
+        
+        .section-header {
+            background: rgba(52, 152, 219, 0.2);
+            border: 1px solid #3498db;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin: 15px 0 10px 0;
+            font-size: 14px;
+            font-weight: bold;
+            color: #3498db;
+            text-align: center;
+        }
+        
+        .input-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
 
         .status-indicator {
             padding: 10px;
@@ -372,34 +390,66 @@
                     📁 Load Island Image
                 </button>
                 
+                <!-- Island Editor Section -->
+                <div class="section-header">🏝️ Island Editor</div>
+                
                 <div class="input-group">
                     <label>Island Name</label>
-                    <input type="text" id="islandName" placeholder="Enter island name" value="Saint Kitts">
+                    <select id="islandName">
+                        <option value="__new__">+ Add New Island</option>
+                        <option value="Saint Kitts" selected>Saint Kitts</option>
+                    </select>
+                    <input type="text" id="newIslandName" placeholder="Enter new island name" style="display: none; margin-top: 5px;">
                 </div>
                 
+                <!-- Position Controls -->
+                <div class="section-header">📍 Position</div>
+                <div class="input-row">
+                    <div class="input-group" style="flex: 1; margin-right: 10px;">
+                        <label>X</label>
+                        <input type="number" id="islandX" value="0" oninput="mapEditor.updateIslandProperty('x', this.value)">
+                    </div>
+                    <div class="input-group" style="flex: 1;">
+                        <label>Y</label>
+                        <input type="number" id="islandY" value="0" oninput="mapEditor.updateIslandProperty('y', this.value)">
+                    </div>
+                </div>
+                
+                <!-- Image Dimensions -->
+                <div class="section-header">📐 Image Dimensions</div>
+                <div class="input-row">
+                    <div class="input-group" style="flex: 1; margin-right: 10px;">
+                        <label>Width</label>
+                        <input type="number" id="islandWidth" value="800" min="100" max="2000" oninput="mapEditor.updateIslandProperty('width', this.value)">
+                    </div>
+                    <div class="input-group" style="flex: 1;">
+                        <label>Height</label>
+                        <input type="number" id="islandHeight" value="600" min="100" max="2000" oninput="mapEditor.updateIslandProperty('height', this.value)">
+                    </div>
+                </div>
+                
+                <button class="btn btn-info" onclick="mapEditor.resetImageDimensions()" style="width: 100%; margin-top: 5px;">
+                    🔄 Reset to Original Size
+                </button>
+                
+                <!-- Rotation -->
+                <div class="section-header">🔄 Rotation</div>
                 <div class="input-group">
-                    <label>Position X</label>
-                    <input type="number" id="islandX" value="0">
+                    <label>Rotation (degrees)</label>
+                    <input type="range" id="islandRotation" min="0" max="360" value="0" oninput="mapEditor.updateRotation(this.value)">
+                    <input type="number" id="islandRotationValue" min="0" max="360" value="0" style="width: 60px; margin-left: 10px;" oninput="mapEditor.updateRotation(this.value)">
                 </div>
                 
-                <div class="input-group">
-                    <label>Position Y</label>
-                    <input type="number" id="islandY" value="0">
+                <div class="input-row" style="margin-top: 5px;">
+                    <button class="btn btn-secondary" onclick="mapEditor.rotateIsland(-90)" style="flex: 1; margin-right: 5px;">↺ -90°</button>
+                    <button class="btn btn-secondary" onclick="mapEditor.rotateIsland(90)" style="flex: 1;">↻ +90°</button>
                 </div>
                 
-                <div class="input-group">
-                    <label>Width (pixels)</label>
-                    <input type="number" id="islandWidth" value="800" min="100" max="2000">
-                </div>
-                
-                <div class="input-group">
-                    <label>Height (pixels)</label>
-                    <input type="number" id="islandHeight" value="600" min="100" max="2000">
-                </div>
-                
+                <!-- Collision -->
+                <div class="section-header">💥 Collision</div>
                 <div class="input-group">
                     <label>Radius (collision)</label>
-                    <input type="number" id="islandRadius" value="150">
+                    <input type="number" id="islandRadius" value="150" oninput="mapEditor.updateIslandProperty('radius', this.value)">
                 </div>
                 
                 <button class="btn btn-success" onclick="mapEditor.addIsland()">
@@ -408,6 +458,10 @@
                 
                 <button class="btn btn-warning" onclick="mapEditor.downloadSelectedIslandImage()" id="downloadImageBtn" style="display: none;">
                     💾 Download Island Image
+                </button>
+                
+                <button class="btn btn-info" onclick="mapEditor.saveIslandConfiguration()" id="saveIslandBtn" style="display: none;" title="Generate island configuration for Agent integration">
+                    💾 Save Island Config
                 </button>
                 
                 <button class="btn btn-secondary" onclick="mapEditor.undo()" id="undoBtn" title="Undo last action (Ctrl+Z)">
@@ -431,7 +485,11 @@
                 </button>
                 
                 <button class="btn btn-warning" onclick="mapEditor.optimizePoints()">
-                    ⚡ Optimize
+                    ⚡ Basic Optimize
+                </button>
+                
+                <button class="btn btn-warning" onclick="mapEditor.advancedOptimizePoints()" title="Advanced collision optimization with multiple algorithms">
+                    🔧 Advanced Optimize
                 </button>
                 
                 <button class="btn btn-danger" onclick="mapEditor.clearCollision()">
@@ -497,6 +555,18 @@
                 
                 <button class="btn btn-primary" onclick="mapEditor.resetView()">
                     🎯 Reset View
+                </button>
+                
+                <button class="btn btn-secondary" onclick="mapEditor.rotateSelected(90)" title="Rotate selected island 90° clockwise">
+                    ↻ Rotate 90°
+                </button>
+                
+                <button class="btn btn-secondary" onclick="mapEditor.rotateSelected(-90)" title="Rotate selected island 90° counter-clockwise">
+                    ↺ Rotate -90°
+                </button>
+                
+                <button class="btn btn-secondary" onclick="mapEditor.debugUndoStack()" title="Show undo stack debug information">
+                    🐛 Debug Undo
                 </button>
                 
                 <button class="btn btn-warning" onclick="mapEditor.exportData()">
@@ -585,20 +655,99 @@
                 this.ctrlPressed = false;
                 this.islandDragStart = null;
                 this.islandResizeMode = false;
+                this.islandRotateMode = false;
+                this.resizeStartDimensions = null;
+                this.resizeStartMouse = null;
+                this.rotateStartAngle = 0;
+                this.rotateStartRotation = 0;
+                this.rotateCenter = null;
+                
+                // Server status
+                this.serverAvailable = false;
                 
                 this.init();
+            }
+            
+            isNearIslandEdge(worldPos, island) {
+                if (!island) return false;
+                
+                const edgeThreshold = 50; // pixels threshold for edge detection
+                const left = island.x - island.width / 2;
+                const right = island.x + island.width / 2;
+                const top = island.y - island.height / 2;
+                const bottom = island.y + island.height / 2;
+                
+                // Check if point is within island bounds but near edges
+                const isInBounds = worldPos.x >= left && worldPos.x <= right && 
+                                   worldPos.y >= top && worldPos.y <= bottom;
+                
+                if (!isInBounds) return false;
+                
+                // Check distance to edges
+                const distToLeft = Math.abs(worldPos.x - left);
+                const distToRight = Math.abs(worldPos.x - right);
+                const distToTop = Math.abs(worldPos.y - top);
+                const distToBottom = Math.abs(worldPos.y - bottom);
+                
+                return distToLeft < edgeThreshold || distToRight < edgeThreshold ||
+                       distToTop < edgeThreshold || distToBottom < edgeThreshold;
+            }
+            
+            setupEventHandlers() {
+                // Handle island name dropdown changes
+                const islandNameDropdown = document.getElementById('islandName');
+                const newIslandNameInput = document.getElementById('newIslandName');
+                
+                islandNameDropdown.addEventListener('change', (e) => {
+                    if (e.target.value === '__new__') {
+                        newIslandNameInput.style.display = 'block';
+                        newIslandNameInput.focus();
+                    } else {
+                        newIslandNameInput.style.display = 'none';
+                        // Auto-fill position if selecting existing island
+                        const existingIsland = this.islands.find(island => island.name === e.target.value);
+                        if (existingIsland) {
+                            document.getElementById('islandX').value = existingIsland.x;
+                            document.getElementById('islandY').value = existingIsland.y;
+                            document.getElementById('islandRadius').value = existingIsland.radius || 150;
+                        }
+                    }
+                });
             }
             
             init() {
                 this.setupEventListeners();
                 this.setupCanvas();
+                this.setupEventHandlers();
                 this.loadExistingGameData();
                 // Save initial state after loading data for proper undo functionality
                 this.saveInitialUndoState();
                 this.updateUndoButton(); // Initialize undo button state
+                this.checkServerStatus();
                 this.updateStatus('Map Editor Ready', 'info');
                 this.startAnimationLoop();
                 console.log('🗺️ Standalone Map Editor initialized');
+            }
+            
+            async checkServerStatus() {
+                try {
+                    const response = await fetch('http://localhost:8001/api/list-island-images', {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    if (response.ok) {
+                        this.serverAvailable = true;
+                        console.log('✅ Image upload server available');
+                    } else {
+                        this.serverAvailable = false;
+                        console.warn('⚠️ Image upload server responding but with errors');
+                    }
+                } catch (error) {
+                    this.serverAvailable = false;
+                    console.warn('⚠️ Image upload server not available. Images will not be saved to assets folder.');
+                    console.log('💡 To enable image saving, run: npm run dev');
+                }
             }
             
             loadExistingGameData() {
@@ -611,6 +760,7 @@
                         width: 800,
                         height: 600,
                         radius: 600, // Collision radius from game
+                        rotation: 0, // Default rotation
                         image: null, // Will be loaded if available
                         originalImageData: null,
                         isExisting: true,  // Mark as existing game island
@@ -644,11 +794,25 @@
                             { x: 1654.5, y: 937.0 },  // 2000 + (-345.5), 1500 + (-563.0)
                             { x: 1768.6, y: 926.2 }   // 2000 + (-231.4), 1500 + (-573.8)
                         ]
+                    },
+                    {
+                        name: 'Nevis',
+                        x: 2699,    // Game world X coordinate
+                        y: 2493,    // Game world Y coordinate
+                        width: 2325,
+                        height: 2324,
+                        radius: 600, // Collision radius from game
+                        rotation: 0, // Default rotation
+                        image: null, // Will be loaded if available
+                        originalImageData: null,
+                        isExisting: true,  // Mark as existing game island
+                        collision: [] // No collision points defined yet
                     }
                 ];
                 
-                // Try to load Saint Kitts image automatically
+                // Try to load island images automatically
                 this.loadSaintKittsImage(gameIslands[0]);
+                this.loadNevisImage(gameIslands[1]);
                 
                 // Convert game data to editor format
                 this.islands = gameIslands;
@@ -656,7 +820,7 @@
                 
                 if (this.islands.length > 0) {
                     this.selectIslandByIndex(0);
-                    this.updateStatus(`Loaded ${this.islands.length} existing island(s) from game world`, 'success');
+                    this.updateStatus(`Loaded ${this.islands.length} existing island(s) from game world: ${this.islands.map(i => i.name).join(', ')}`, 'success');
                     
                     // Start with a view of the entire world
                     this.resetToWorldView();
@@ -670,6 +834,7 @@
                 const img = new Image();
                 img.onload = () => {
                     island.image = img;
+                    island.imagePath = 'assets/Islands/Saint_Kitts.png';
                     this.updateStatus('Saint Kitts image loaded successfully', 'success');
                     this.render();
                 };
@@ -678,6 +843,72 @@
                     this.updateStatus('Using placeholder for Saint Kitts (image not found)', 'info');
                 };
                 img.src = 'assets/Islands/Saint_Kitts.png'; // Try to load from project
+            }
+            
+            loadNevisImage(island) {
+                // Try to load the Nevis image from the project
+                const img = new Image();
+                img.onload = () => {
+                    island.image = img;
+                    island.imagePath = 'assets/Islands/Nevis.png';
+                    this.updateStatus('Nevis image loaded successfully', 'success');
+                    this.render();
+                };
+                img.onerror = () => {
+                    console.log('Could not load Nevis image - using placeholder');
+                    this.updateStatus('Using placeholder for Nevis (image not found)', 'info');
+                };
+                img.src = 'assets/Islands/Nevis.png'; // Try to load from project
+            }
+            
+            loadIslandImageFromPath(island, imagePath) {
+                if (!imagePath && !island.originalImageData) return;
+                
+                const img = new Image();
+                img.onload = () => {
+                    island.image = img;
+                    if (imagePath) island.imagePath = imagePath;
+                    this.render();
+                };
+                img.onerror = () => {
+                    console.warn(`Could not load image from path: ${imagePath}`);
+                    // Fallback to originalImageData if path fails
+                    if (island.originalImageData) {
+                        console.log('Falling back to originalImageData for island:', island.name);
+                        this.loadIslandFromBase64(island, island.originalImageData);
+                    }
+                };
+                
+                // Try to load from path first, fallback to originalImageData if no path
+                if (imagePath) {
+                    img.src = imagePath;
+                } else if (island.originalImageData) {
+                    img.src = island.originalImageData;
+                }
+            }
+            
+            loadIslandFromBase64(island, base64Data) {
+                if (!base64Data) return;
+                
+                const img = new Image();
+                img.onload = () => {
+                    island.image = img;
+                    this.render();
+                };
+                img.onerror = () => {
+                    console.error('Failed to load image from base64 data for island:', island.name);
+                };
+                img.src = base64Data;
+            }
+            
+            // Helper method to create a clean copy of islands data for serialization
+            getSerializableIslands() {
+                return this.islands.map(island => {
+                    const cleanIsland = { ...island };
+                    // Remove non-serializable properties like Image objects
+                    delete cleanIsland.image;
+                    return cleanIsland;
+                });
             }
             
             centerOnIsland(island) {
@@ -737,10 +968,40 @@
                         // Ctrl+Click on island - start island manipulation
                         const islandClicked = this.isPointInIsland(this.worldMousePos, this.selectedIsland);
                         if (islandClicked) {
-                            this.islandDragStart = {
-                                x: this.worldMousePos.x - this.selectedIsland.x,
-                                y: this.worldMousePos.y - this.selectedIsland.y
-                            };
+                            // Determine manipulation mode based on click position
+                            const island = this.selectedIsland;
+                            const dx = this.worldMousePos.x - island.x;
+                            const dy = this.worldMousePos.y - island.y;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            
+                            // Check if clicking near edges for resize mode
+                            const isNearEdge = this.isNearIslandEdge(this.worldMousePos, island);
+                            
+                            if (isNearEdge) {
+                                // Start resize mode
+                                this.islandResizeMode = true;
+                                this.resizeStartDimensions = {
+                                    width: island.width,
+                                    height: island.height
+                                };
+                                this.resizeStartMouse = { ...this.worldMousePos };
+                                this.updateStatus('CTRL+Click Resize Mode: Drag to resize island', 'info');
+                            } else if (e.shiftKey) {
+                                // CTRL+SHIFT+Click for rotation mode
+                                this.islandRotateMode = true;
+                                this.rotateStartAngle = Math.atan2(dy, dx);
+                                this.rotateStartRotation = island.rotation || 0;
+                                this.rotateCenter = { x: island.x, y: island.y };
+                                this.updateStatus('CTRL+SHIFT+Click Rotate Mode: Drag to rotate island', 'info');
+                            } else {
+                                // Default: move mode
+                                this.islandDragStart = {
+                                    x: this.worldMousePos.x - island.x,
+                                    y: this.worldMousePos.y - island.y
+                                };
+                                this.updateStatus('CTRL+Click Move Mode: Drag to move island', 'info');
+                            }
+                            
                             this.isDragging = true;
                             this.saveUndoState();
                         }
@@ -795,7 +1056,35 @@
                     `Mouse: (${this.mousePos.x}, ${this.mousePos.y}) | World: (${this.worldMousePos.x.toFixed(1)}, ${this.worldMousePos.y.toFixed(1)})`;
                 
                 if (this.isDragging) {
-                    if (this.islandDragStart && this.selectedIsland) {
+                    if (this.islandResizeMode && this.selectedIsland) {
+                        // Resize island
+                        const mouseDx = this.worldMousePos.x - this.resizeStartMouse.x;
+                        const mouseDy = this.worldMousePos.y - this.resizeStartMouse.y;
+                        
+                        // Apply resize based on mouse movement
+                        const scaleFactor = 1 + (mouseDx + mouseDy) / 1000; // Adjust sensitivity
+                        this.selectedIsland.width = Math.max(100, this.resizeStartDimensions.width * scaleFactor);
+                        this.selectedIsland.height = Math.max(100, this.resizeStartDimensions.height * scaleFactor);
+                        
+                        // Update form controls
+                        document.getElementById('islandWidth').value = Math.round(this.selectedIsland.width);
+                        document.getElementById('islandHeight').value = Math.round(this.selectedIsland.height);
+                    } else if (this.islandRotateMode && this.selectedIsland) {
+                        // Rotate island
+                        const dx = this.worldMousePos.x - this.rotateCenter.x;
+                        const dy = this.worldMousePos.y - this.rotateCenter.y;
+                        const currentAngle = Math.atan2(dy, dx);
+                        const angleDiff = currentAngle - this.rotateStartAngle;
+                        
+                        // Convert to degrees and apply
+                        const rotationDegrees = (angleDiff * 180 / Math.PI);
+                        this.selectedIsland.rotation = (this.rotateStartRotation + rotationDegrees) % 360;
+                        if (this.selectedIsland.rotation < 0) this.selectedIsland.rotation += 360;
+                        
+                        // Update form controls
+                        document.getElementById('islandRotation').value = Math.round(this.selectedIsland.rotation);
+                        document.getElementById('islandRotationValue').value = Math.round(this.selectedIsland.rotation);
+                    } else if (this.islandDragStart && this.selectedIsland) {
                         // Drag entire island
                         this.selectedIsland.x = this.worldMousePos.x - this.islandDragStart.x;
                         this.selectedIsland.y = this.worldMousePos.y - this.islandDragStart.y;
@@ -836,6 +1125,22 @@
                 this.selectedPointIndex = -1;
                 this.pointDragStarted = false;
                 this.islandDragStart = null;
+                
+                // Reset manipulation modes
+                if (this.islandResizeMode) {
+                    this.islandResizeMode = false;
+                    this.resizeStartDimensions = null;
+                    this.resizeStartMouse = null;
+                    this.updateStatus('Resize complete', 'success');
+                }
+                
+                if (this.islandRotateMode) {
+                    this.islandRotateMode = false;
+                    this.rotateStartAngle = 0;
+                    this.rotateStartRotation = 0;
+                    this.rotateCenter = null;
+                    this.updateStatus('Rotation complete', 'success');
+                }
             }
             
             handleWheel(e) {
@@ -857,17 +1162,37 @@
             }
             
             handleKeyDown(e) {
-                // Handle global shortcuts first (these should work regardless of focus)
+                // Don't handle Ctrl+Z if an input element is focused (except for specific inputs that should allow it)
+                const activeElement = document.activeElement;
+                const isInputFocused = activeElement && (
+                    activeElement.tagName === 'INPUT' || 
+                    activeElement.tagName === 'TEXTAREA' || 
+                    activeElement.tagName === 'SELECT'
+                );
+                
+                // Handle Ctrl+Z carefully
                 if (e.ctrlKey && e.code === 'KeyZ') {
-                    // Ctrl+Z: Undo last action (works globally)
+                    // Allow undo unless user is typing in a text field
+                    if (isInputFocused && activeElement.type === 'text') {
+                        // Let the input handle its own undo
+                        return;
+                    }
+                    
                     e.preventDefault();
+                    
+                    // Add safety check before undo
+                    if (this.islands.length === 0 && this.undoStack.length > 0) {
+                        console.warn('Preventing undo: islands array is empty but undo stack exists');
+                        this.recoverFromUndoFailure();
+                        return;
+                    }
+                    
                     this.undo();
                     return;
                 }
                 
                 // Don't handle other keys if an input element is focused
-                const activeElement = document.activeElement;
-                if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'SELECT')) {
+                if (isInputFocused) {
                     return;
                 }
                 
@@ -982,37 +1307,196 @@
                 reader.onload = (event) => {
                     const img = new Image();
                     img.onload = () => {
-                        // Create new island with loaded image
-                        const islandName = document.getElementById('islandName').value || file.name.split('.')[0];
+                        // Get island name from dropdown or prompt for new name
+                        const islandNameDropdown = document.getElementById('islandName');
+                        const newIslandNameInput = document.getElementById('newIslandName');
+                        
+                        let islandName;
+                        let existingIsland = null;
+                        
+                        // Always prompt for island name when uploading image
+                        const defaultName = islandNameDropdown.value === '__new__' ? 
+                                          file.name.split('.')[0] : 
+                                          islandNameDropdown.value;
+                                          
+                        islandName = prompt('Enter name for the island:', defaultName);
+                        
+                        // If user cancelled the prompt, use default name
+                        if (!islandName || islandName.trim() === '') {
+                            islandName = defaultName;
+                        }
+                        
+                        islandName = islandName.trim();
+                        
+                        // Check if this island name already exists
+                        existingIsland = this.islands.find(island => island.name === islandName);
+                        
                         const x = parseFloat(document.getElementById('islandX').value) || 0;
                         const y = parseFloat(document.getElementById('islandY').value) || 0;
                         const radius = parseFloat(document.getElementById('islandRadius').value) || 150;
                         
-                        const island = {
-                            name: islandName,
-                            x: x,
-                            y: y,
-                            width: img.width || 800,
-                            height: img.height || 600,
-                            radius: radius,
-                            image: img,
-                            originalImageData: event.target.result,
-                            collision: []
-                        };
-                        
-                        this.islands.push(island);
-                        this.updateIslandSelector();
-                        this.selectIslandByIndex(this.islands.length - 1);
-                        this.updateStatus(`Loaded island: ${islandName}`, 'success');
-                        this.render();
+                        // Save image to assets/Islands folder
+                        this.saveImageToAssets(file, islandName, event.target.result)
+                            .then(savedPath => {
+                                if (existingIsland) {
+                                    // Update existing island with new image
+                                    existingIsland.image = img;
+                                    existingIsland.originalImageData = event.target.result;
+                                    existingIsland.imagePath = savedPath;
+                                    existingIsland.width = img.width || existingIsland.width || 800;
+                                    existingIsland.height = img.height || existingIsland.height || 600;
+                                    
+                                    // Select the updated island
+                                    const islandIndex = this.islands.indexOf(existingIsland);
+                                    this.selectIslandByIndex(islandIndex);
+                                    this.updateStatus(`Updated and saved image for island: ${islandName}`, 'success');
+                                } else {
+                                    // Create new island
+                                    const island = {
+                                        name: islandName,
+                                        x: x,
+                                        y: y,
+                                        width: img.width || 800,
+                                        height: img.height || 600,
+                                        radius: radius,
+                                        rotation: parseFloat(document.getElementById('islandRotation').value) || 0,
+                                        image: img,
+                                        originalImageData: event.target.result,
+                                        imagePath: savedPath,
+                                        collision: []
+                                    };
+                                    
+                                    this.islands.push(island);
+                                    this.selectIslandByIndex(this.islands.length - 1);
+                                    this.updateStatus(`Created new island: ${islandName} and saved image`, 'success');
+                                }
+                                
+                                // Update dropdowns to reflect the chosen island name
+                                this.updateIslandSelector();
+                                
+                                // Update the island name dropdown to show the selected/created island
+                                if (islandNameDropdown.value !== islandName) {
+                                    // Check if the name exists in dropdown, if not it was a new island
+                                    const optionExists = [...islandNameDropdown.options].some(opt => opt.value === islandName);
+                                    if (optionExists) {
+                                        islandNameDropdown.value = islandName;
+                                        newIslandNameInput.style.display = 'none';
+                                    } else {
+                                        islandNameDropdown.value = '__new__';
+                                        newIslandNameInput.value = islandName;
+                                        newIslandNameInput.style.display = 'block';
+                                    }
+                                }
+                                
+                                this.render();
+                            })
+                            .catch(error => {
+                                console.error('Failed to save image:', error);
+                                // Still create/update island even if save fails
+                                if (existingIsland) {
+                                    existingIsland.image = img;
+                                    existingIsland.originalImageData = event.target.result;
+                                    existingIsland.width = img.width || existingIsland.width || 800;
+                                    existingIsland.height = img.height || existingIsland.height || 600;
+                                    
+                                    const islandIndex = this.islands.indexOf(existingIsland);
+                                    this.selectIslandByIndex(islandIndex);
+                                    this.updateStatus(`Updated island: ${islandName} (save failed)`, 'warning');
+                                } else {
+                                    const island = {
+                                        name: islandName,
+                                        x: x,
+                                        y: y,
+                                        width: img.width || 800,
+                                        height: img.height || 600,
+                                        radius: radius,
+                                        rotation: parseFloat(document.getElementById('islandRotation').value) || 0,
+                                        image: img,
+                                        originalImageData: event.target.result,
+                                        collision: []
+                                    };
+                                    
+                                    this.islands.push(island);
+                                    this.selectIslandByIndex(this.islands.length - 1);
+                                    this.updateStatus(`Created island: ${islandName} (save failed)`, 'warning');
+                                }
+                                
+                                // Update dropdowns to reflect the chosen island name
+                                this.updateIslandSelector();
+                                
+                                // Update the island name dropdown to show the selected/created island
+                                if (islandNameDropdown.value !== islandName) {
+                                    // Check if the name exists in dropdown, if not it was a new island
+                                    const optionExists = [...islandNameDropdown.options].some(opt => opt.value === islandName);
+                                    if (optionExists) {
+                                        islandNameDropdown.value = islandName;
+                                        newIslandNameInput.style.display = 'none';
+                                    } else {
+                                        islandNameDropdown.value = '__new__';
+                                        newIslandNameInput.value = islandName;
+                                        newIslandNameInput.style.display = 'block';
+                                    }
+                                }
+                                
+                                this.render();
+                            });
                     };
                     img.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
             }
             
+            async saveImageToAssets(file, islandName, imageData) {
+                try {
+                    // Generate filename
+                    const extension = file.name.split('.').pop() || 'png';
+                    const cleanName = islandName.replace(/[^a-zA-Z0-9_-]/g, '_');
+                    const filename = `${cleanName}.${extension}`;
+                    
+                    // Prepare data for server
+                    const requestData = {
+                        filename: filename,
+                        imageData: imageData,
+                        islandName: islandName
+                    };
+                    
+                    const response = await fetch('http://localhost:8001/api/save-island-image', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Server responded with ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    console.log('Image saved successfully:', result);
+                    return result.path;
+                    
+                } catch (error) {
+                    if (error.message.includes('Failed to fetch')) {
+                        console.warn('Image upload server not running. Run "npm run dev" to enable image saving.');
+                        throw new Error('Image upload server not running. Start it with "npm run dev" to save images to assets folder.');
+                    } else {
+                        console.error('Error saving image to assets:', error);
+                        throw error;
+                    }
+                }
+            }
+            
             addIsland() {
-                const name = document.getElementById('islandName').value || 'New Island';
+                const islandNameDropdown = document.getElementById('islandName');
+                const newIslandNameInput = document.getElementById('newIslandName');
+                
+                let name;
+                if (islandNameDropdown.value === '__new__') {
+                    name = newIslandNameInput.value.trim() || 'New Island';
+                } else {
+                    name = islandNameDropdown.value || 'New Island';
+                }
                 const x = parseFloat(document.getElementById('islandX').value) || 0;
                 const y = parseFloat(document.getElementById('islandY').value) || 0;
                 const radius = parseFloat(document.getElementById('islandRadius').value) || 150;
@@ -1027,6 +1511,7 @@
                     width: width,
                     height: height,
                     radius: radius,
+                    rotation: parseFloat(document.getElementById('islandRotation').value) || 0,
                     image: null,
                     originalImageData: null,
                     collision: []
@@ -1058,16 +1543,27 @@
                 this.selectedPointIndex = -1;
                 
                 // Update form values
-                document.getElementById('islandName').value = this.selectedIsland.name;
+                const islandNameDropdown = document.getElementById('islandName');
+                const newIslandNameInput = document.getElementById('newIslandName');
+                
+                // Set dropdown to selected island name and hide new name input
+                islandNameDropdown.value = this.selectedIsland.name;
+                newIslandNameInput.style.display = 'none';
                 document.getElementById('islandX').value = this.selectedIsland.x;
                 document.getElementById('islandY').value = this.selectedIsland.y;
                 document.getElementById('islandWidth').value = this.selectedIsland.width || 800;
                 document.getElementById('islandHeight').value = this.selectedIsland.height || 600;
                 document.getElementById('islandRadius').value = this.selectedIsland.radius;
+                document.getElementById('islandRotation').value = this.selectedIsland.rotation || 0;
+                document.getElementById('islandRotationValue').value = this.selectedIsland.rotation || 0;
                 
                 // Show/hide download button
                 const downloadBtn = document.getElementById('downloadImageBtn');
                 downloadBtn.style.display = this.selectedIsland.originalImageData ? 'block' : 'none';
+                
+                // Show/hide save island button
+                const saveIslandBtn = document.getElementById('saveIslandBtn');
+                saveIslandBtn.style.display = 'block'; // Always show when island is selected
                 
                 this.updateCollisionPointsList();
                 this.updateStatus(`Selected island: ${this.selectedIsland.name}`, 'info');
@@ -1083,6 +1579,32 @@
                     option.textContent = `${island.name} (${island.x}, ${island.y})`;
                     selector.appendChild(option);
                 });
+                
+                // Also update the island name dropdown
+                this.updateIslandNameDropdown();
+            }
+            
+            updateIslandNameDropdown() {
+                const dropdown = document.getElementById('islandName');
+                const currentValue = dropdown.value;
+                
+                // Clear existing options except "Add New Island"
+                dropdown.innerHTML = '<option value="__new__">+ Add New Island</option>';
+                
+                // Add existing islands
+                this.islands.forEach(island => {
+                    const option = document.createElement('option');
+                    option.value = island.name;
+                    option.textContent = island.name;
+                    dropdown.appendChild(option);
+                });
+                
+                // Restore selection if it still exists
+                if ([...dropdown.options].some(opt => opt.value === currentValue)) {
+                    dropdown.value = currentValue;
+                } else if (this.islands.length > 0) {
+                    dropdown.value = this.islands[0].name;
+                }
             }
             
             updateCollisionPointsList() {
@@ -1167,8 +1689,284 @@
                 
                 const removed = original - this.selectedIsland.collision.length;
                 this.updateCollisionPointsList();
-                this.updateStatus(`Optimized: removed ${removed} redundant points`, 'success');
+                this.updateStatus(`Basic optimize: removed ${removed} redundant points`, 'success');
                 this.render();
+            }
+            
+            advancedOptimizePoints() {
+                if (!this.selectedIsland || !this.selectedIsland.collision) {
+                    this.updateStatus('No collision points to optimize', 'warning');
+                    return;
+                }
+                
+                if (this.selectedIsland.collision.length < 4) {
+                    this.updateStatus('Need at least 4 points for advanced optimization', 'warning');
+                    return;
+                }
+                
+                // Show optimization options dialog
+                const options = this.showOptimizationDialog();
+                if (!options) return;
+                
+                // Save state for undo
+                this.saveUndoState();
+                
+                const original = this.selectedIsland.collision.length;
+                let optimizedPoints = [...this.selectedIsland.collision];
+                
+                // Apply selected optimization algorithms
+                if (options.removeRedundant) {
+                    optimizedPoints = this.removeRedundantPoints(optimizedPoints, options.threshold);
+                }
+                
+                if (options.smoothPath) {
+                    optimizedPoints = this.smoothCollisionPath(optimizedPoints, options.smoothFactor);
+                }
+                
+                if (options.douglasPeucker) {
+                    optimizedPoints = this.douglasPeuckerSimplify(optimizedPoints, options.dpTolerance);
+                }
+                
+                if (options.removeCollinear) {
+                    optimizedPoints = this.removeCollinearPoints(optimizedPoints, options.angleThreshold);
+                }
+                
+                if (options.evenSpacing) {
+                    optimizedPoints = this.createEvenSpacing(optimizedPoints, options.targetPoints);
+                }
+                
+                // Ensure minimum number of points
+                if (optimizedPoints.length < 3) {
+                    this.updateStatus('Optimization would result in too few points', 'warning');
+                    return;
+                }
+                
+                this.selectedIsland.collision = optimizedPoints;
+                const removed = original - optimizedPoints.length;
+                
+                this.updateCollisionPointsList();
+                this.updateStatus(`Advanced optimize: ${original} → ${optimizedPoints.length} points (${removed} removed)`, 'success');
+                this.render();
+            }
+            
+            showOptimizationDialog() {
+                const dialog = `
+Advanced Collision Optimization Options:
+
+Choose optimization methods:
+1. Remove redundant points (close neighbors)
+2. Smooth collision path (reduce sharp angles)
+3. Douglas-Peucker simplification (preserve shape)
+4. Remove collinear points (straight line segments)
+5. Create even spacing (redistribute points)
+
+Enter numbers (e.g., "1,3,5" or "all" for all options):`;
+                
+                const input = prompt(dialog, "1,3");
+                if (!input) return null;
+                
+                const selectedOptions = input.toLowerCase() === 'all' ? [1,2,3,4,5] : 
+                    input.split(',').map(n => parseInt(n.trim())).filter(n => n >= 1 && n <= 5);
+                
+                if (selectedOptions.length === 0) {
+                    this.updateStatus('No valid options selected', 'warning');
+                    return null;
+                }
+                
+                // Get parameters based on selected options
+                const options = {
+                    removeRedundant: selectedOptions.includes(1),
+                    smoothPath: selectedOptions.includes(2),
+                    douglasPeucker: selectedOptions.includes(3),
+                    removeCollinear: selectedOptions.includes(4),
+                    evenSpacing: selectedOptions.includes(5),
+                    threshold: 15, // Distance threshold for redundant points
+                    smoothFactor: 0.1, // Smoothing strength
+                    dpTolerance: 5, // Douglas-Peucker tolerance
+                    angleThreshold: 5, // Degrees for collinear detection
+                    targetPoints: Math.max(8, Math.floor(this.selectedIsland.collision.length * 0.7)) // Target point count
+                };
+                
+                return options;
+            }
+            
+            removeRedundantPoints(points, threshold) {
+                const result = [points[0]]; // Always keep first point
+                
+                for (let i = 1; i < points.length; i++) {
+                    const current = points[i];
+                    const last = result[result.length - 1];
+                    
+                    const distance = Math.sqrt(
+                        Math.pow(current.x - last.x, 2) + 
+                        Math.pow(current.y - last.y, 2)
+                    );
+                    
+                    if (distance >= threshold) {
+                        result.push(current);
+                    }
+                }
+                
+                return result;
+            }
+            
+            smoothCollisionPath(points, smoothFactor) {
+                if (points.length < 3) return points;
+                
+                const smoothed = [];
+                
+                for (let i = 0; i < points.length; i++) {
+                    const prev = points[(i - 1 + points.length) % points.length];
+                    const current = points[i];
+                    const next = points[(i + 1) % points.length];
+                    
+                    // Calculate smoothed position
+                    const smoothX = current.x + (prev.x + next.x - 2 * current.x) * smoothFactor;
+                    const smoothY = current.y + (prev.y + next.y - 2 * current.y) * smoothFactor;
+                    
+                    smoothed.push({ x: smoothX, y: smoothY });
+                }
+                
+                return smoothed;
+            }
+            
+            douglasPeuckerSimplify(points, tolerance) {
+                if (points.length < 3) return points;
+                
+                // Implementation of Douglas-Peucker algorithm
+                const simplify = (pts, first, last, tol) => {
+                    if (last - first < 2) return [];
+                    
+                    let maxDist = 0;
+                    let maxIndex = 0;
+                    
+                    // Find point with maximum distance from line segment
+                    for (let i = first + 1; i < last; i++) {
+                        const dist = this.pointToLineDistance(pts[i], pts[first], pts[last]);
+                        if (dist > maxDist) {
+                            maxDist = dist;
+                            maxIndex = i;
+                        }
+                    }
+                    
+                    if (maxDist > tol) {
+                        // Recursively simplify segments
+                        const left = simplify(pts, first, maxIndex, tol);
+                        const right = simplify(pts, maxIndex, last, tol);
+                        return left.concat([pts[maxIndex]], right);
+                    } else {
+                        return [];
+                    }
+                };
+                
+                const simplified = [points[0]].concat(
+                    simplify(points, 0, points.length - 1, tolerance),
+                    [points[points.length - 1]]
+                );
+                
+                return simplified;
+            }
+            
+            removeCollinearPoints(points, angleThreshold) {
+                if (points.length < 3) return points;
+                
+                const result = [];
+                const radThreshold = (angleThreshold * Math.PI) / 180;
+                
+                for (let i = 0; i < points.length; i++) {
+                    const prev = points[(i - 1 + points.length) % points.length];
+                    const current = points[i];
+                    const next = points[(i + 1) % points.length];
+                    
+                    // Calculate angle between vectors
+                    const v1 = { x: current.x - prev.x, y: current.y - prev.y };
+                    const v2 = { x: next.x - current.x, y: next.y - current.y };
+                    
+                    const angle = Math.abs(Math.atan2(v1.x * v2.y - v1.y * v2.x, v1.x * v2.x + v1.y * v2.y));
+                    
+                    // Keep point if angle is significant
+                    if (angle > radThreshold && angle < Math.PI - radThreshold) {
+                        result.push(current);
+                    }
+                }
+                
+                return result.length >= 3 ? result : points; // Fallback if too few points
+            }
+            
+            createEvenSpacing(points, targetCount) {
+                if (points.length <= targetCount) return points;
+                
+                // Calculate total perimeter
+                let totalLength = 0;
+                for (let i = 0; i < points.length; i++) {
+                    const current = points[i];
+                    const next = points[(i + 1) % points.length];
+                    totalLength += Math.sqrt(
+                        Math.pow(next.x - current.x, 2) + 
+                        Math.pow(next.y - current.y, 2)
+                    );
+                }
+                
+                const segmentLength = totalLength / targetCount;
+                const result = [];
+                
+                let currentLength = 0;
+                let targetLength = 0;
+                
+                for (let i = 0; i < points.length && result.length < targetCount; i++) {
+                    const current = points[i];
+                    const next = points[(i + 1) % points.length];
+                    
+                    const segLength = Math.sqrt(
+                        Math.pow(next.x - current.x, 2) + 
+                        Math.pow(next.y - current.y, 2)
+                    );
+                    
+                    while (currentLength + segLength >= targetLength && result.length < targetCount) {
+                        const t = (targetLength - currentLength) / segLength;
+                        const interpolated = {
+                            x: current.x + t * (next.x - current.x),
+                            y: current.y + t * (next.y - current.y)
+                        };
+                        
+                        result.push(interpolated);
+                        targetLength += segmentLength;
+                    }
+                    
+                    currentLength += segLength;
+                }
+                
+                return result;
+            }
+            
+            pointToLineDistance(point, lineStart, lineEnd) {
+                const A = point.x - lineStart.x;
+                const B = point.y - lineStart.y;
+                const C = lineEnd.x - lineStart.x;
+                const D = lineEnd.y - lineStart.y;
+                
+                const dot = A * C + B * D;
+                const lenSq = C * C + D * D;
+                
+                if (lenSq === 0) return Math.sqrt(A * A + B * B);
+                
+                const param = dot / lenSq;
+                
+                let xx, yy;
+                if (param < 0) {
+                    xx = lineStart.x;
+                    yy = lineStart.y;
+                } else if (param > 1) {
+                    xx = lineEnd.x;
+                    yy = lineEnd.y;
+                } else {
+                    xx = lineStart.x + param * C;
+                    yy = lineStart.y + param * D;
+                }
+                
+                const dx = point.x - xx;
+                const dy = point.y - yy;
+                return Math.sqrt(dx * dx + dy * dy);
             }
             
             clearCollision() {
@@ -1187,6 +1985,235 @@
                     this.updateStatus('Collision points cleared', 'success');
                     this.render();
                 }
+            }
+            
+            saveIslandConfiguration() {
+                if (!this.selectedIsland) {
+                    this.updateStatus('Please select an island first', 'warning');
+                    return;
+                }
+                
+                const island = this.selectedIsland;
+                
+                // Generate comprehensive island configuration
+                const config = {
+                    // Basic Information
+                    name: island.name,
+                    
+                    // Position and Dimensions
+                    position: {
+                        x: Math.round(island.x),
+                        y: Math.round(island.y)
+                    },
+                    
+                    dimensions: {
+                        width: Math.round(island.width || 800),
+                        height: Math.round(island.height || 600),
+                        radius: Math.round(island.radius || 150)
+                    },
+                    
+                    // Transformation
+                    rotation: Math.round(island.rotation || 0),
+                    
+                    // Image Information
+                    image: {
+                        path: island.imagePath || null,
+                        hasImage: !!island.image,
+                        hasOriginalData: !!island.originalImageData
+                    },
+                    
+                    // Collision Data
+                    collision: {
+                        pointCount: island.collision ? island.collision.length : 0,
+                        points: island.collision ? island.collision.map(point => ({
+                            // World coordinates
+                            world: {
+                                x: Math.round(point.x * 10) / 10,
+                                y: Math.round(point.y * 10) / 10
+                            },
+                            // Relative to island center
+                            relative: {
+                                x: Math.round((point.x - island.x) * 10) / 10,
+                                y: Math.round((point.y - island.y) * 10) / 10
+                            }
+                        })) : []
+                    },
+                    
+                    // Metadata
+                    metadata: {
+                        isExisting: island.isExisting || false,
+                        generated: new Date().toISOString(),
+                        editorVersion: '1.0.0'
+                    }
+                };
+                
+                // Generate code output for Agent integration
+                const codeOutput = this.generateAgentIntegrationCode(config);
+                
+                // Show in modal dialog
+                this.showIslandConfigurationDialog(config, codeOutput);
+                
+                // Also copy to clipboard
+                try {
+                    navigator.clipboard.writeText(codeOutput).then(() => {
+                        this.updateStatus('Island configuration copied to clipboard', 'success');
+                    });
+                } catch (error) {
+                    console.warn('Could not copy to clipboard:', error);
+                    this.updateStatus('Island configuration generated (clipboard not available)', 'success');
+                }
+            }
+            
+            generateAgentIntegrationCode(config) {
+                const island = config;
+                
+                let code = `// ===== ISLAND CONFIGURATION FOR AGENT INTEGRATION =====\n\n`;
+                code += `// Island: ${island.name}\n`;
+                code += `// Generated: ${island.metadata.generated}\n\n`;
+                
+                // JavaScript object format
+                code += `const ${island.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}Config = {\n`;
+                code += `    name: "${island.name}",\n`;
+                code += `    position: { x: ${island.position.x}, y: ${island.position.y} },\n`;
+                code += `    dimensions: { width: ${island.dimensions.width}, height: ${island.dimensions.height}, radius: ${island.dimensions.radius} },\n`;
+                code += `    rotation: ${island.rotation},\n`;
+                
+                if (island.image.path) {
+                    code += `    imagePath: "${island.image.path}",\n`;
+                }
+                
+                if (island.collision.pointCount > 0) {
+                    code += `    collision: [\n`;
+                    island.collision.points.forEach((point, index) => {
+                        const comma = index < island.collision.points.length - 1 ? ',' : '';
+                        code += `        { x: ${point.relative.x}, y: ${point.relative.y} }${comma}  // World: (${point.world.x}, ${point.world.y})\n`;
+                    });
+                    code += `    ]\n`;
+                } else {
+                    code += `    collision: []  // No collision points defined\n`;
+                }
+                
+                code += `};\n\n`;
+                
+                // Usage examples
+                code += `// ===== USAGE EXAMPLES =====\n\n`;
+                code += `// 1. Add to game map configuration:\n`;
+                code += `// gameMap.addIsland(${island.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}Config);\n\n`;
+                
+                code += `// 2. Agent integration format:\n`;
+                code += `/*\n`;
+                code += `ISLAND_DATA:\n`;
+                code += `Name: ${island.name}\n`;
+                code += `Position: (${island.position.x}, ${island.position.y})\n`;
+                code += `Dimensions: ${island.dimensions.width}x${island.dimensions.height}px\n`;
+                code += `Collision Radius: ${island.dimensions.radius}px\n`;
+                code += `Rotation: ${island.rotation}°\n`;
+                code += `Collision Points: ${island.collision.pointCount}\n`;
+                if (island.image.path) {
+                    code += `Image: ${island.image.path}\n`;
+                }
+                code += `*/\n\n`;
+                
+                code += `// 3. JSON format for API/config files:\n`;
+                code += JSON.stringify(island, null, 2);
+                
+                return code;
+            }
+            
+            showIslandConfigurationDialog(config, codeOutput) {
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 10000;
+                    font-family: monospace;
+                `;
+                
+                const dialog = document.createElement('div');
+                dialog.style.cssText = `
+                    background: #2c3e50;
+                    color: #ecf0f1;
+                    padding: 20px;
+                    border-radius: 8px;
+                    max-width: 90%;
+                    max-height: 90%;
+                    overflow: auto;
+                    border: 2px solid #3498db;
+                `;
+                
+                dialog.innerHTML = `
+                    <h2 style="color: #3498db; margin-top: 0;">🏝️ Island Configuration: ${config.name}</h2>
+                    <div style="margin-bottom: 15px;">
+                        <strong>📍 Position:</strong> (${config.position.x}, ${config.position.y})<br>
+                        <strong>📐 Dimensions:</strong> ${config.dimensions.width}×${config.dimensions.height}px<br>
+                        <strong>🔄 Rotation:</strong> ${config.rotation}°<br>
+                        <strong>💥 Collision Points:</strong> ${config.collision.pointCount}<br>
+                        <strong>🖼️ Image:</strong> ${config.image.hasImage ? '✅ Loaded' : '❌ No image'}<br>
+                    </div>
+                    <textarea readonly style="
+                        width: 100%;
+                        height: 400px;
+                        background: #34495e;
+                        color: #ecf0f1;
+                        border: 1px solid #3498db;
+                        border-radius: 4px;
+                        padding: 10px;
+                        font-family: 'Courier New', monospace;
+                        font-size: 12px;
+                        resize: vertical;
+                    ">${codeOutput}</textarea>
+                    <div style="margin-top: 15px; text-align: center;">
+                        <button onclick="this.parentElement.parentElement.parentElement.remove()" style="
+                            background: #3498db;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            margin-right: 10px;
+                        ">✅ Close</button>
+                        <button onclick="
+                            const textarea = this.parentElement.parentElement.querySelector('textarea');
+                            textarea.select();
+                            document.execCommand('copy');
+                            this.textContent = '📋 Copied!';
+                            setTimeout(() => this.textContent = '📋 Copy Code', 1000);
+                        " style="
+                            background: #27ae60;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            border-radius: 4px;
+                            cursor: pointer;
+                        ">📋 Copy Code</button>
+                    </div>
+                `;
+                
+                modal.appendChild(dialog);
+                document.body.appendChild(modal);
+                
+                // Close on escape key
+                const closeHandler = (e) => {
+                    if (e.key === 'Escape') {
+                        modal.remove();
+                        document.removeEventListener('keydown', closeHandler);
+                    }
+                };
+                document.addEventListener('keydown', closeHandler);
+                
+                // Auto-select the textarea content
+                setTimeout(() => {
+                    const textarea = dialog.querySelector('textarea');
+                    textarea.focus();
+                    textarea.select();
+                }, 100);
             }
             
             async propagateToProject() {
@@ -1460,32 +2487,72 @@ relative coordinates for your project!
             }
             
             saveUndoState() {
-                // Don't save undo state if islands array is empty (unless it's intentionally empty after deletion)
-                if (this.islands.length === 0 && this.undoStack.length === 0) {
-                    return;
+                try {
+                    // Don't save undo state if islands array is empty (unless it's intentionally empty after deletion)
+                    if (this.islands.length === 0 && this.undoStack.length === 0) {
+                        return;
+                    }
+                    
+                    // Create a clean copy of the islands without Image objects
+                    const cleanIslands = this.islands.map(island => {
+                        const cleanIsland = {
+                            name: island.name,
+                            x: island.x,
+                            y: island.y,
+                            width: island.width,
+                            height: island.height,
+                            radius: island.radius,
+                            rotation: island.rotation || 0,
+                            collision: Array.isArray(island.collision) ? [...island.collision] : [],
+                            isExisting: island.isExisting,
+                            originalImageData: island.originalImageData
+                        };
+                        return cleanIsland;
+                    });
+                    
+                    // Save current state for undo functionality
+                    const state = {
+                        islands: cleanIslands,
+                        selectedIslandIndex: this.selectedIsland ? this.islands.indexOf(this.selectedIsland) : -1
+                    };
+                    
+                    this.undoStack.push(state);
+                    
+                    // Limit undo stack size
+                    if (this.undoStack.length > this.maxUndoSteps) {
+                        this.undoStack.shift();
+                    }
+                    
+                    this.updateUndoButton();
+                    
+                } catch (error) {
+                    console.error('Failed to save undo state:', error);
+                    this.updateStatus('Warning: Could not save undo state', 'warning');
                 }
-                
-                // Save current state for undo functionality
-                const state = {
-                    islands: JSON.parse(JSON.stringify(this.islands)),
-                    selectedIslandIndex: this.selectedIsland ? this.islands.indexOf(this.selectedIsland) : -1
-                };
-                
-                this.undoStack.push(state);
-                
-                // Limit undo stack size
-                if (this.undoStack.length > this.maxUndoSteps) {
-                    this.undoStack.shift();
-                }
-                
-                this.updateUndoButton();
             }
             
             saveInitialUndoState() {
                 // Save the initial state after loading game data
                 if (this.islands.length > 0) {
+                    // Create a clean copy of the islands without Image objects
+                    const cleanIslands = this.islands.map(island => {
+                        const cleanIsland = {
+                            name: island.name,
+                            x: island.x,
+                            y: island.y,
+                            width: island.width,
+                            height: island.height,
+                            radius: island.radius,
+                            rotation: island.rotation || 0,
+                            collision: Array.isArray(island.collision) ? [...island.collision] : [],
+                            isExisting: island.isExisting,
+                            originalImageData: island.originalImageData
+                        };
+                        return cleanIsland;
+                    });
+                    
                     const state = {
-                        islands: JSON.parse(JSON.stringify(this.islands)),
+                        islands: cleanIslands,
                         selectedIslandIndex: this.selectedIsland ? this.islands.indexOf(this.selectedIsland) : -1
                     };
                     
@@ -1522,28 +2589,101 @@ relative coordinates for your project!
                     return;
                 }
                 
-                // Remove current state and get previous state
-                this.undoStack.pop(); // Remove current state
-                const state = this.undoStack[this.undoStack.length - 1]; // Get previous state (but keep it in stack)
+                try {
+                    // Remove current state and get previous state
+                    this.undoStack.pop(); // Remove current state
+                    const state = this.undoStack[this.undoStack.length - 1]; // Get previous state (but keep it in stack)
+                    
+                    // Restore state
+                    this.islands = state.islands.map(island => {
+                        const restoredIsland = { ...island };
+                        
+                        // Reload images (they are lost during JSON serialization/deserialization)
+                        if (island.imagePath || island.originalImageData) {
+                            // Load from saved path with fallback to base64 data
+                            this.loadIslandImageFromPath(restoredIsland, island.imagePath);
+                        } else if (island.name === 'Saint Kitts' || (island.name === 'Saint Kitts Island' && island.isExisting)) {
+                            // Fallback for Saint Kitts
+                            this.loadSaintKittsImage(restoredIsland);
+                        }
+                        
+                        return restoredIsland;
+                    });
+                    
+                    // Restore selected island
+                    if (state.selectedIslandIndex >= 0 && state.selectedIslandIndex < this.islands.length) {
+                        this.selectedIsland = this.islands[state.selectedIslandIndex];
+                    } else {
+                        this.selectedIsland = null;
+                    }
+                    
+                    // Update UI
+                    this.updateIslandSelector();
+                    this.updateCollisionPointsList();
+                    this.selectedPointIndex = -1;
+                    this.updateUndoButton();
+                    
+                    this.updateStatus(`Undo completed (${this.undoStack.length - 1} more available)`, 'success');
+                    this.render();
+                    
+                } catch (error) {
+                    console.error('Undo operation failed:', error);
+                    this.updateStatus('Undo failed: ' + error.message, 'warning');
+                }
+            }
+            
+            recoverFromUndoFailure() {
+                console.log('Attempting to recover from undo failure...');
                 
-                // Restore state
-                this.islands = JSON.parse(JSON.stringify(state.islands)); // Deep clone to avoid reference issues
+                // Clear corrupted undo stack
+                this.undoStack = [];
                 
-                // Restore selected island
-                if (state.selectedIslandIndex >= 0 && state.selectedIslandIndex < this.islands.length) {
-                    this.selectedIsland = this.islands[state.selectedIslandIndex];
+                // Reload initial game data
+                try {
+                    this.loadExistingGameData();
+                    this.updateStatus('Recovered from undo failure - data reloaded', 'info');
+                } catch (error) {
+                    console.error('Recovery failed:', error);
+                    this.updateStatus('Recovery failed - please refresh the page', 'warning');
+                }
+            }
+            
+            debugUndoStack() {
+                console.log('=== UNDO STACK DEBUG INFO ===');
+                console.log('Current islands count:', this.islands.length);
+                console.log('Undo stack length:', this.undoStack.length);
+                console.log('Selected island:', this.selectedIsland ? this.selectedIsland.name : 'none');
+                
+                if (this.undoStack.length > 0) {
+                    console.log('Undo stack contents:');
+                    this.undoStack.forEach((state, index) => {
+                        console.log(`  ${index}: ${state.islands?.length || 'invalid'} islands, selectedIndex: ${state.selectedIslandIndex}, timestamp: ${new Date(state.timestamp || 0).toLocaleTimeString()}`);
+                    });
                 } else {
-                    this.selectedIsland = null;
+                    console.log('Undo stack is empty');
                 }
                 
-                // Update UI
-                this.updateIslandSelector();
-                this.updateCollisionPointsList();
-                this.selectedPointIndex = -1;
-                this.updateUndoButton();
+                // Validate current islands
+                let validIslands = 0;
+                for (let i = 0; i < this.islands.length; i++) {
+                    const island = this.islands[i];
+                    if (island && typeof island === 'object' && island.name && typeof island.x === 'number') {
+                        validIslands++;
+                    } else {
+                        console.log(`  Invalid island at index ${i}:`, island);
+                    }
+                }
                 
-                this.updateStatus(`Undo completed (${this.undoStack.length - 1} more available)`, 'success');
-                this.render();
+                const debugInfo = `Debug Info:
+• Current Islands: ${this.islands.length} (${validIslands} valid)
+• Undo Stack: ${this.undoStack.length} states
+• Selected: ${this.selectedIsland ? this.selectedIsland.name : 'none'}
+• Stack Status: ${this.undoStack.length > 1 ? 'Can undo' : 'Cannot undo'}
+
+See console for detailed information.`;
+                
+                alert(debugInfo);
+                this.updateStatus('Debug info logged to console', 'info');
             }
             
             render() {
@@ -1755,12 +2895,21 @@ relative coordinates for your project!
                 const width = island.radius * 2 * this.zoom;
                 const height = island.radius * 2 * this.zoom;
                 
-                // Draw island image or placeholder
-                if (island.image) {
+                // Draw island image or placeholder with rotation
+                this.ctx.save();
+                this.ctx.translate(screenX, screenY);
+                
+                // Apply rotation if specified
+                const rotation = island.rotation || 0;
+                if (rotation !== 0) {
+                    this.ctx.rotate((rotation * Math.PI) / 180);
+                }
+                
+                if (island.image && island.image instanceof HTMLImageElement && island.image.complete) {
                     this.ctx.drawImage(
                         island.image,
-                        screenX - width / 2,
-                        screenY - height / 2,
+                        -width / 2,
+                        -height / 2,
                         width,
                         height
                     );
@@ -1770,8 +2919,8 @@ relative coordinates for your project!
                         this.ctx.strokeStyle = '#3498db';
                         this.ctx.lineWidth = 2;
                         this.ctx.strokeRect(
-                            screenX - width / 2,
-                            screenY - height / 2,
+                            -width / 2,
+                            -height / 2,
                             width,
                             height
                         );
@@ -1780,12 +2929,14 @@ relative coordinates for your project!
                     // Draw placeholder rectangle
                     this.ctx.fillStyle = isSelected ? '#27ae60' : '#8fbc8f';
                     this.ctx.fillRect(
-                        screenX - width / 2,
-                        screenY - height / 2,
+                        -width / 2,
+                        -height / 2,
                         width,
                         height
                     );
                 }
+                
+                this.ctx.restore();
                 
                 // Draw island collision radius outline
                 this.ctx.strokeStyle = isSelected ? '#3498db' : '#2ecc71';
@@ -1800,11 +2951,10 @@ relative coordinates for your project!
                 this.ctx.fillStyle = island.isExisting ? '#e74c3c' : '#ffffff';
                 this.ctx.font = `${Math.max(12, 14 * this.zoom)}px Arial`;
                 this.ctx.textAlign = 'center';
-                this.ctx.fillText(
-                    island.isExisting ? `${island.name} (EXISTING)` : island.name, 
-                    screenX, 
-                    screenY - height / 2 - 20
-                );
+                const displayName = island.isExisting ? `${island.name} (EXISTING)` : island.name;
+                const displayRotation = island.rotation || 0;
+                const nameWithRotation = displayRotation !== 0 ? `${displayName} (${displayRotation}°)` : displayName;
+                this.ctx.fillText(nameWithRotation, screenX, screenY - height / 2 - 20);
                 
                 if (isSelected) {
                     this.ctx.font = `${Math.max(10, 12 * this.zoom)}px Arial`;
@@ -1897,6 +3047,12 @@ relative coordinates for your project!
                 const worldY = (this.mousePos.y - this.offsetY) / this.zoom;
                 this.ctx.fillText(`World Pos: (${worldX.toFixed(0)}, ${worldY.toFixed(0)})`, 15, this.canvas.height - 15);
                 
+                // Draw server status indicator
+                const serverStatus = this.serverAvailable ? '🟢 Server OK' : '🔴 Server OFF';
+                const serverColor = this.serverAvailable ? '#27ae60' : '#e74c3c';
+                this.ctx.fillStyle = serverColor;
+                this.ctx.fillText(`Image Saving: ${serverStatus}`, 270, this.canvas.height - 15);
+                
                 // Draw collision line mode indicator
                 if (this.collisionLineMode) {
                     this.ctx.fillStyle = 'rgba(231, 76, 60, 0.9)';
@@ -1910,6 +3066,47 @@ relative coordinates for your project!
                     if (this.tempCollisionPoints.length > 0) {
                         this.drawTempCollisionLine();
                     }
+                }
+                
+                // Draw manipulation mode indicators
+                if (this.islandResizeMode) {
+                    this.ctx.fillStyle = 'rgba(52, 152, 219, 0.9)';
+                    this.ctx.fillRect(this.canvas.width - 220, this.canvas.height - 80, 200, 25);
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.font = 'bold 12px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText('🔄 RESIZE MODE', this.canvas.width - 120, this.canvas.height - 62);
+                } else if (this.islandRotateMode) {
+                    this.ctx.fillStyle = 'rgba(155, 89, 182, 0.9)';
+                    this.ctx.fillRect(this.canvas.width - 220, this.canvas.height - 80, 200, 25);
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.font = 'bold 12px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText('↻ ROTATE MODE', this.canvas.width - 120, this.canvas.height - 62);
+                } else if (this.islandDragStart) {
+                    this.ctx.fillStyle = 'rgba(46, 204, 113, 0.9)';
+                    this.ctx.fillRect(this.canvas.width - 220, this.canvas.height - 80, 200, 25);
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.font = 'bold 12px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText('✋ MOVE MODE', this.canvas.width - 120, this.canvas.height - 62);
+                }
+                
+                // Draw CTRL+Click instructions when CTRL is pressed
+                if (this.ctrlPressed && this.selectedIsland) {
+                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                    this.ctx.fillRect(this.canvas.width - 280, 10, 270, 90);
+                    this.ctx.fillStyle = '#3498db';
+                    this.ctx.font = 'bold 14px Arial';
+                    this.ctx.textAlign = 'left';
+                    this.ctx.fillText('CTRL+Click Controls:', this.canvas.width - 275, 30);
+                    
+                    this.ctx.font = '12px Arial';
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.fillText('• Center: Move island', this.canvas.width - 275, 50);
+                    this.ctx.fillText('• Near edges: Resize island', this.canvas.width - 275, 65);
+                    this.ctx.fillText('• CTRL+SHIFT: Rotate island', this.canvas.width - 275, 80);
+                    this.ctx.fillText('• Release to finish', this.canvas.width - 275, 95);
                 }
             }
         
@@ -2019,6 +3216,84 @@ relative coordinates for your project!
                 document.getElementById('islandY').value = Math.round(this.selectedIsland.y);
             }
             
+            updateIslandProperty(property, value) {
+                if (!this.selectedIsland) return;
+                
+                const numValue = parseFloat(value);
+                if (isNaN(numValue)) return;
+                
+                this.selectedIsland[property] = numValue;
+                this.render();
+            }
+            
+            updateRotation(value) {
+                // Update both slider and input field
+                document.getElementById('islandRotation').value = value;
+                document.getElementById('islandRotationValue').value = value;
+                
+                // Update selected island if exists
+                if (this.selectedIsland) {
+                    this.saveUndoState();
+                    this.selectedIsland.rotation = parseFloat(value);
+                    this.render();
+                    this.updateStatus(`Island rotation set to ${value}°`, 'info');
+                }
+            }
+            
+            rotateIsland(degrees) {
+                if (!this.selectedIsland) return;
+                
+                this.saveUndoState();
+                const currentRotation = this.selectedIsland.rotation || 0;
+                const newRotation = (currentRotation + degrees) % 360;
+                
+                this.selectedIsland.rotation = newRotation < 0 ? newRotation + 360 : newRotation;
+                
+                // Update form controls
+                document.getElementById('islandRotation').value = this.selectedIsland.rotation;
+                document.getElementById('islandRotationValue').value = this.selectedIsland.rotation;
+                
+                this.render();
+                this.updateStatus(`Island rotated by ${degrees}°`, 'info');
+            }
+            
+            resetImageDimensions() {
+                if (!this.selectedIsland || !this.selectedIsland.image) return;
+                
+                this.saveUndoState();
+                this.selectedIsland.width = this.selectedIsland.image.naturalWidth || this.selectedIsland.image.width;
+                this.selectedIsland.height = this.selectedIsland.image.naturalHeight || this.selectedIsland.image.height;
+                
+                // Update form controls
+                document.getElementById('islandWidth').value = this.selectedIsland.width;
+                document.getElementById('islandHeight').value = this.selectedIsland.height;
+                
+                this.render();
+                this.updateStatus('Island dimensions reset to original size', 'success');
+            }
+            
+            rotateSelected(degrees) {
+                if (!this.selectedIsland) {
+                    this.updateStatus('Please select an island first', 'warning');
+                    return;
+                }
+                
+                this.saveUndoState();
+                
+                // Add rotation and normalize to 0-360 range
+                let newRotation = (this.selectedIsland.rotation || 0) + degrees;
+                newRotation = ((newRotation % 360) + 360) % 360; // Ensure positive value
+                
+                this.selectedIsland.rotation = newRotation;
+                
+                // Update form controls
+                document.getElementById('islandRotation').value = newRotation;
+                document.getElementById('islandRotationValue').value = newRotation;
+                
+                this.render();
+                this.updateStatus(`Island rotated ${degrees > 0 ? 'clockwise' : 'counter-clockwise'} to ${newRotation}°`, 'success');
+            }
+            
             downloadSelectedIslandImage() {
                 if (!this.selectedIsland || !this.selectedIsland.originalImageData) {
                     this.updateStatus('No image to download', 'warning');
@@ -2068,7 +3343,8 @@ Note: Since this is a client-side editor, you need to manually place the image i
                 output += `Island Name: ${island.name}\n`;
                 output += `Position: (${island.x}, ${island.y})\n`;
                 output += `Dimensions: ${island.width}x${island.height} pixels\n`;
-                output += `Collision Radius: ${island.radius}\n\n`;
+                output += `Collision Radius: ${island.radius}\n`;
+                output += `Rotation: ${island.rotation || 0}°\n\n`;
                 
                 output += `=== INSTRUCTIONS FOR ADDING TO GAME ===\n\n`;
                 output += `1. Save island image as: assets/Islands/${island.name.replace(/\s+/g, '_')}.png\n\n`;
