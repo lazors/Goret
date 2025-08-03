@@ -2505,7 +2505,8 @@ relative coordinates for your project!
                             rotation: island.rotation || 0,
                             collision: Array.isArray(island.collision) ? [...island.collision] : [],
                             isExisting: island.isExisting,
-                            originalImageData: island.originalImageData
+                            originalImageData: island.originalImageData,
+                            imagePath: island.imagePath // Preserve image path for proper reloading
                         };
                         return cleanIsland;
                     });
@@ -2546,7 +2547,8 @@ relative coordinates for your project!
                             rotation: island.rotation || 0,
                             collision: Array.isArray(island.collision) ? [...island.collision] : [],
                             isExisting: island.isExisting,
-                            originalImageData: island.originalImageData
+                            originalImageData: island.originalImageData,
+                            imagePath: island.imagePath // Preserve image path for proper reloading
                         };
                         return cleanIsland;
                     });
@@ -2598,13 +2600,16 @@ relative coordinates for your project!
                     this.islands = state.islands.map(island => {
                         const restoredIsland = { ...island };
                         
-                        // Reload images (they are lost during JSON serialization/deserialization)
-                        if (island.imagePath || island.originalImageData) {
-                            // Load from saved path with fallback to base64 data
+                        // Reload images for all existing islands based on their name
+                        if (island.isExisting) {
+                            if (island.name === 'Saint Kitts Island') {
+                                this.loadSaintKittsImage(restoredIsland);
+                            } else if (island.name === 'Nevis') {
+                                this.loadNevisImage(restoredIsland);
+                            }
+                        } else if (island.imagePath || island.originalImageData) {
+                            // Load custom uploaded images
                             this.loadIslandImageFromPath(restoredIsland, island.imagePath);
-                        } else if (island.name === 'Saint Kitts' || (island.name === 'Saint Kitts Island' && island.isExisting)) {
-                            // Fallback for Saint Kitts
-                            this.loadSaintKittsImage(restoredIsland);
                         }
                         
                         return restoredIsland;
