@@ -368,6 +368,33 @@
         </div>
         
         <div class="control-panel">
+            <!-- Edit Actions -->
+            <div class="panel-section">
+                <div class="panel-title">✏️ Edit Actions</div>
+                
+                <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                    <button class="btn btn-primary" data-action="undo" onclick="advancedEditor.undo()" style="flex: 1;" title="Ctrl+Z">
+                        ↶ Undo
+                    </button>
+                    <button class="btn btn-primary" data-action="redo" onclick="advancedEditor.redo()" style="flex: 1;" title="Ctrl+Y">
+                        ↷ Redo
+                    </button>
+                </div>
+                
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-success" onclick="advancedEditor.save()" style="flex: 1;" title="Ctrl+S">
+                        💾 Save
+                    </button>
+                    <button class="btn btn-secondary" onclick="advancedEditor.showHistoryPanel()" style="flex: 1;">
+                        📜 History
+                    </button>
+                </div>
+                
+                <button class="btn btn-warning" onclick="advancedEditor.testUndoSystem()" style="width: 100%;">
+                    🧪 Test Undo System
+                </button>
+            </div>
+            
             <!-- Island Management -->
             <div class="panel-section">
                 <div class="panel-title">🏝️ Island Management</div>
@@ -430,6 +457,17 @@
                 <button class="btn btn-success" onclick="advancedEditor.addIsland()">
                     ➕ Add Island
                 </button>
+                
+                <div class="section-header">Auto-Fitting</div>
+                
+                <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                    <button class="btn btn-warning" onclick="if(advancedEditor.selectedIsland) advancedEditor.fitImageToCollisionBounds(advancedEditor.selectedIsland)" style="flex: 1;" title="Fit selected island to collision bounds">
+                        📐 Fit to Bounds
+                    </button>
+                    <button class="btn btn-warning" onclick="advancedEditor.autoFitAllIslands()" style="flex: 1;" title="Auto-fit all islands to their collision bounds">
+                        📐 Fit All
+                    </button>
+                </div>
             </div>
             
             <!-- Collision Editor -->
@@ -554,6 +592,13 @@
                     <div>• <kbd>R</kbd> - Rotate Tool</div>
                     <div>• <kbd>C</kbd> - Collision Editor</div>
                     <div>• <kbd>L</kbd> - Measure Tool</div>
+                    
+                    <div style="margin-top: 10px;"><strong style="color: #e74c3c;">Edit Actions:</strong></div>
+                    <div>• <kbd>Ctrl+Z</kbd> - Undo last action</div>
+                    <div>• <kbd>Ctrl+Y</kbd> - Redo last action</div>
+                    <div>• <kbd>Ctrl+S</kbd> - Save map</div>
+                    <div>• <kbd>Ctrl+C</kbd> - Copy selected</div>
+                    <div>• <kbd>Ctrl+V</kbd> - Paste copied</div>
                     
                     <div style="margin-top: 10px;"><strong style="color: #f39c12;">Navigation:</strong></div>
                     <div>• <kbd>W A S D</kbd> - Pan view</div>
@@ -705,6 +750,9 @@
             if (!advancedEditor?.selectedIsland) return;
             
             const island = advancedEditor.selectedIsland;
+            
+            // Save undo state before making changes
+            advancedEditor.saveUndoState('island:modify', `Changed ${property} of ${island.name}`);
             
             switch (property) {
                 case 'islandX':
