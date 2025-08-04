@@ -24,6 +24,28 @@ Since this is a static web application with no build process:
    python -m http.server 8000
    ```
 
+## Map Editor with Image Saving
+
+The map editor can automatically save loaded images to the `assets/Islands` folder:
+
+1. **Development Mode (with image saving):**
+   ```bash
+   npm run dev
+   ```
+   This runs both the game server (port 8000) and image upload server (port 8001)
+
+2. **Image Upload Server Only:**
+   ```bash
+   npm run server
+   ```
+   Runs the Node.js server on port 8001 for handling image uploads
+
+3. **Game Only (no image saving):**
+   ```bash
+   npm start
+   ```
+   Standard HTTP server without image upload functionality
+
 ## Architecture
 
 ### Entry Points

@@ -399,6 +399,10 @@
                 <button class="btn btn-secondary" onclick="advancedEditor.debugInfo()">
                     🐛 Debug Info
                 </button>
+                
+                <button class="btn btn-secondary" onclick="advancedEditor.resetIslandDimensions()">
+                    📐 Reset Dimensions
+                </button>
             </div>
             
             <!-- Island Management -->
@@ -715,12 +719,15 @@
             // Update all the input fields with current island values
             document.getElementById('islandX').value = island.x || 0;
             document.getElementById('islandY').value = island.y || 0;
-            document.getElementById('islandWidth').value = island.width || 400;
-            document.getElementById('islandHeight').value = island.height || 300;
+            document.getElementById('islandWidth').value = island.width || 800;
+            document.getElementById('islandHeight').value = island.height || 600;
             document.getElementById('islandRotation').value = island.rotation || 0;
             document.getElementById('islandRotationValue').value = island.rotation || 0;
             document.getElementById('islandRadius').value = island.radius || 150;
             document.getElementById('islandRadiusValue').value = island.radius || 150;
+            
+            // Update status
+            document.getElementById('selectionInfo').textContent = `Selected: ${island.name} (${island.width}x${island.height})`;
         }
         
         function setupInputHandlers() {

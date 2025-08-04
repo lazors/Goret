@@ -1390,13 +1390,17 @@ class AdvancedMapEditor {
         
         img.onload = () => {
             island.image = img;
-            // Update dimensions from actual image if not set
+            
+            // Only set dimensions if they're not already specified in island data
             if (!island.width || !island.height) {
-                island.width = img.naturalWidth;
-                island.height = img.naturalHeight;
+                // Use reasonable scaling for natural image dimensions
+                const naturalScale = Math.min(800 / img.naturalWidth, 600 / img.naturalHeight, 1);
+                island.width = Math.round(img.naturalWidth * naturalScale);
+                island.height = Math.round(img.naturalHeight * naturalScale);
             }
+            
             this.markDirty('all');
-            this.debugFramework.log(`✅ Successfully loaded image for ${island.name} (${img.naturalWidth}x${img.naturalHeight})`, 'info');
+            this.debugFramework.log(`✅ Successfully loaded image for ${island.name} (${img.naturalWidth}x${img.naturalHeight} -> ${island.width}x${island.height})`, 'info');
         };
         
         img.onerror = (error) => {
@@ -1458,12 +1462,17 @@ class AdvancedMapEditor {
             
             img.onload = () => {
                 island.image = img;
+                
+                // Only set dimensions if they're not already specified in island data
                 if (!island.width || !island.height) {
-                    island.width = img.naturalWidth;
-                    island.height = img.naturalHeight;
+                    // Use reasonable scaling for natural image dimensions
+                    const naturalScale = Math.min(800 / img.naturalWidth, 600 / img.naturalHeight, 1);
+                    island.width = Math.round(img.naturalWidth * naturalScale);
+                    island.height = Math.round(img.naturalHeight * naturalScale);
                 }
+                
                 this.markDirty('all');
-                this.debugFramework.log(`✅ Successfully loaded ${island.name} from alternative path: ${pathToTry}`, 'info');
+                this.debugFramework.log(`✅ Successfully loaded ${island.name} from alternative path: ${pathToTry} (${img.naturalWidth}x${img.naturalHeight} -> ${island.width}x${island.height})`, 'info');
             };
             
             img.onerror = () => {
@@ -2058,20 +2067,35 @@ KEYBOARD SHORTCUTS:
     drawIsland(ctx, island, zoom, offsetX, offsetY) {
         const screenX = island.x * zoom + offsetX;
         const screenY = island.y * zoom + offsetY;
-        const screenRadius = island.radius * zoom;
+        
+        // Use a reasonable collision radius - should be proportional to island size
+        let collisionRadius = island.radius;
+        if (!collisionRadius && (island.width || island.height)) {
+            // Default collision radius to roughly half the largest dimension
+            collisionRadius = Math.max(island.width || 0, island.height || 0) * 0.5;
+        }
+        const screenRadius = (collisionRadius || 150) * zoom;
         
         ctx.save();
         
         // If island has a loaded image, draw it
         if (island.image && island.image.complete) {
-            // Use actual image dimensions scaled properly
-            let imageWidth = island.width * zoom;
-            let imageHeight = island.height * zoom;
+            // Calculate appropriate image dimensions for rendering
+            let imageWidth, imageHeight;
             
-            // If no width/height specified, use the actual image dimensions
-            if (!island.width || !island.height) {
-                imageWidth = island.image.naturalWidth * zoom * 0.5; // Scale down by default
-                imageHeight = island.image.naturalHeight * zoom * 0.5;
+            if (island.width && island.height) {
+                // Use the specified width/height from island data (these are world dimensions)
+                imageWidth = island.width * zoom;
+                imageHeight = island.height * zoom;
+            } else {
+                // Fallback: use natural image dimensions with reasonable scaling
+                const naturalScale = Math.min(800 / island.image.naturalWidth, 600 / island.image.naturalHeight, 1);
+                imageWidth = island.image.naturalWidth * naturalScale * zoom;
+                imageHeight = island.image.naturalHeight * naturalScale * zoom;
+                
+                // Update island dimensions if not set
+                if (!island.width) island.width = island.image.naturalWidth * naturalScale;
+                if (!island.height) island.height = island.image.naturalHeight * naturalScale;
             }
             
             // Apply rotation if specified
@@ -2573,19 +2597,50 @@ if (typeof module !== 'undefined' && module.exports) {
         info += `Islands loaded: ${this.islands.length}\n`;
         info += `Selected island: ${this.selectedIsland ? this.selectedIsland.name : 'None'}\n`;
         info += `Collision line mode: ${this.collisionLineMode}\n`;
-        info += `Show collision bounds: ${this.state.display.showCollisionBounds}\n\n`;
+        info += `Show collision bounds: ${this.state.display.showCollisionBounds}\n`;
+        info += `Current zoom: ${this.state.viewport.zoom.toFixed(2)}\n\n`;
         
         this.islands.forEach((island, index) => {
             info += `Island ${index + 1}: ${island.name}\n`;
             info += `  Position: (${island.x}, ${island.y})\n`;
             info += `  Size: ${island.width}x${island.height}\n`;
             info += `  Radius: ${island.radius}\n`;
+            info += `  Rotation: ${island.rotation}°\n`;
+            info += `  Image: ${island.image ? `${island.image.naturalWidth}x${island.image.naturalHeight}` : 'Not loaded'}\n`;
             info += `  Image loaded: ${island.image && island.image.complete ? 'Yes' : 'No'}\n`;
             info += `  Collision points: ${island.collision ? island.collision.length : 0}\n\n`;
         });
         
         console.log(info);
         alert(info);
+    }
+    
+    resetIslandDimensions() {
+        if (!this.selectedIsland) {
+            alert('Please select an island first');
+            return;
+        }
+        
+        const island = this.selectedIsland;
+        if (island.image && island.image.complete) {
+            // Reset to properly scaled dimensions based on actual image
+            const naturalScale = Math.min(800 / island.image.naturalWidth, 600 / island.image.naturalHeight, 1);
+            island.width = Math.round(island.image.naturalWidth * naturalScale);
+            island.height = Math.round(island.image.naturalHeight * naturalScale);
+            
+            // Update collision radius to match
+            island.radius = Math.max(island.width, island.height) * 0.5;
+            
+            this.markDirty('all');
+            this.debugFramework.log(`Reset dimensions for ${island.name} to ${island.width}x${island.height}`, 'info');
+            
+            // Update UI
+            if (window.updateIslandPropertiesUI) {
+                updateIslandPropertiesUI();
+            }
+        } else {
+            alert('Island image not loaded yet');
+        }
     }
     
     // Enhanced selectIsland with UI updates
