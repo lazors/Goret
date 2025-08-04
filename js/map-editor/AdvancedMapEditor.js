@@ -447,6 +447,22 @@ class AdvancedMapEditor {
                 offsetY: 0,
                 bounds: { minZoom: 0.05, maxZoom: 5.0 }
             },
+            navigation: {
+                keys: {},
+                panSpeed: 300, // pixels per second
+                lastTime: performance.now(),
+                mousePos: { x: 0, y: 0 },
+                isDragging: false,
+                isPanning: false,
+                dragStart: { x: 0, y: 0 },
+                ctrlPressed: false
+            },
+            display: {
+                showGrid: true,
+                showBounds: true,
+                showWaves: false,
+                showCollisionBounds: false
+            },
             ui: {
                 panels: new Map(),
                 shortcuts: new Map(),
@@ -525,6 +541,9 @@ class AdvancedMapEditor {
             
             // Start render loop
             this.requestRender();
+            
+            // Start WASD navigation loop
+            this.startNavigationLoop();
             
             return true;
             
@@ -636,19 +655,8 @@ class AdvancedMapEditor {
             ['H', () => this.showHelp()]
         ]);
         
-        window.addEventListener('keydown', (e) => {
-            const key = this.getKeyCombo(e);
-            const handler = shortcuts.get(key);
-            
-            if (handler) {
-                e.preventDefault();
-                try {
-                    handler();
-                } catch (error) {
-                    this.debugFramework.log(`Keyboard shortcut error: ${error.message}`, 'error');
-                }
-            }
-        });
+        window.addEventListener('keydown', (e) => this.handleKeyDown(e));
+        window.addEventListener('keyup', (e) => this.handleKeyUp(e));
         
         this.state.ui.shortcuts = shortcuts;
     }
@@ -1009,14 +1017,14 @@ class AdvancedMapEditor {
         this.performanceMonitor.startOperation('mouse-down');
         
         const rect = this.canvas.getBoundingClientRect();
-        this.mousePos = {
+        this.state.navigation.mousePos = {
             x: e.clientX - rect.left,
             y: e.clientY - rect.top
         };
         
         this.worldMousePos = {
-            x: (this.mousePos.x - this.state.viewport.offsetX) / this.state.viewport.zoom,
-            y: (this.mousePos.y - this.state.viewport.offsetY) / this.state.viewport.zoom
+            x: (this.state.navigation.mousePos.x - this.state.viewport.offsetX) / this.state.viewport.zoom,
+            y: (this.state.navigation.mousePos.y - this.state.viewport.offsetY) / this.state.viewport.zoom
         };
         
         // Handle collision line mode first
@@ -1034,21 +1042,61 @@ class AdvancedMapEditor {
             }
         }
         
-        // Handle tool-specific mouse down
-        const handled = this.handleToolMouseDown(e, this.worldMousePos);
+        if (e.button === 0) { // Left click
+            if (this.state.navigation.ctrlPressed) {
+                // Ctrl+Click: Select/deselect island
+                const clickedIsland = this.getIslandAtPosition(this.worldMousePos.x, this.worldMousePos.y);
+                if (clickedIsland) {
+                    if (this.state.selectedIslands.has(clickedIsland.name)) {
+                        this.state.selectedIslands.delete(clickedIsland.name);
+                        this.debugFramework.log(`Deselected island: ${clickedIsland.name}`, 'debug');
+                    } else {
+                        this.state.selectedIslands.add(clickedIsland.name);
+                        this.selectedIsland = clickedIsland;
+                        this.debugFramework.log(`Selected island: ${clickedIsland.name}`, 'debug');
+                        this.updateIslandUI(clickedIsland);
+                    }
+                    this.markDirty('all');
+                    this.eventBus.emit('island:selected', { island: clickedIsland });
+                }
+                return true;
+            } else {
+                // Regular click: Check for island selection or start panning
+                const clickedIsland = this.getIslandAtPosition(this.worldMousePos.x, this.worldMousePos.y);
+                if (clickedIsland) {
+                    // Select single island and prepare for dragging
+                    this.state.selectedIslands.clear();
+                    this.state.selectedIslands.add(clickedIsland.name);
+                    this.selectedIsland = clickedIsland;
+                    this.state.navigation.isDragging = true;
+                    this.state.navigation.dragStart.x = this.state.navigation.mousePos.x;
+                    this.state.navigation.dragStart.y = this.state.navigation.mousePos.y;
+                    this.debugFramework.log(`Selected and ready to drag: ${clickedIsland.name}`, 'debug');
+                    this.updateIslandUI(clickedIsland);
+                    this.markDirty('all');
+                    this.eventBus.emit('island:selected', { island: clickedIsland });
+                } else {
+                    // Start panning
+                    this.state.navigation.isPanning = true;
+                    this.state.navigation.dragStart.x = this.state.navigation.mousePos.x;
+                    this.state.navigation.dragStart.y = this.state.navigation.mousePos.y;
+                }
+            }
+        }
         
         this.performanceMonitor.endOperation('mouse-down');
-        return handled;
+        return true;
     }
     
     handleMouseUp(e) {
         this.performanceMonitor.startOperation('mouse-up');
         
-        // Handle tool-specific mouse up
-        const handled = this.handleToolMouseUp(e, this.worldMousePos);
+        // Reset drag states
+        this.state.navigation.isDragging = false;
+        this.state.navigation.isPanning = false;
         
         this.performanceMonitor.endOperation('mouse-up');
-        return handled;
+        return true;
     }
     
     handleWheel(e) {
@@ -1078,19 +1126,85 @@ class AdvancedMapEditor {
     
     throttledMouseMove = this.throttle((e) => {
         const rect = this.canvas.getBoundingClientRect();
-        this.mousePos = {
+        this.state.navigation.mousePos = {
             x: e.clientX - rect.left,
             y: e.clientY - rect.top
         };
         
         this.worldMousePos = {
-            x: (this.mousePos.x - this.state.viewport.offsetX) / this.state.viewport.zoom,
-            y: (this.mousePos.y - this.state.viewport.offsetY) / this.state.viewport.zoom
+            x: (this.state.navigation.mousePos.x - this.state.viewport.offsetX) / this.state.viewport.zoom,
+            y: (this.state.navigation.mousePos.y - this.state.viewport.offsetY) / this.state.viewport.zoom
         };
         
+        // Handle panning
+        if (this.state.navigation.isPanning) {
+            const dx = this.state.navigation.mousePos.x - this.state.navigation.dragStart.x;
+            const dy = this.state.navigation.mousePos.y - this.state.navigation.dragStart.y;
+            this.state.viewport.offsetX += dx;
+            this.state.viewport.offsetY += dy;
+            this.state.navigation.dragStart.x = this.state.navigation.mousePos.x;
+            this.state.navigation.dragStart.y = this.state.navigation.mousePos.y;
+            this.markDirty('all');
+        }
+        
+        // Handle island dragging
+        if (this.state.navigation.isDragging && this.selectedIsland) {
+            const dx = this.state.navigation.mousePos.x - this.state.navigation.dragStart.x;
+            const dy = this.state.navigation.mousePos.y - this.state.navigation.dragStart.y;
+            
+            // Convert screen movement to world movement
+            const worldDx = dx / this.state.viewport.zoom;
+            const worldDy = dy / this.state.viewport.zoom;
+            
+            this.selectedIsland.x += worldDx;
+            this.selectedIsland.y += worldDy;
+            
+            this.state.navigation.dragStart.x = this.state.navigation.mousePos.x;
+            this.state.navigation.dragStart.y = this.state.navigation.mousePos.y;
+            
+            this.updateIslandUI(this.selectedIsland);
+            this.markDirty('all');
+        }
+        
         // Handle tool-specific mouse move
-        this.handleToolMouseMove(e, this.worldMousePos);
+        if (this.handleToolMouseMove) {
+            this.handleToolMouseMove(e, this.worldMousePos);
+        }
     }, 16); // 60fps throttling
+    
+    handleKeyDown(e) {
+        // Store key state for WASD navigation
+        this.state.navigation.keys[e.code] = true;
+        
+        // Track Ctrl key
+        this.state.navigation.ctrlPressed = e.ctrlKey;
+        
+        // Prevent default for navigation keys
+        if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) {
+            e.preventDefault();
+        }
+        
+        // Handle keyboard shortcuts
+        const key = this.getKeyCombo(e);
+        const handler = this.state.ui.shortcuts.get(key);
+        
+        if (handler) {
+            e.preventDefault();
+            try {
+                handler();
+            } catch (error) {
+                this.debugFramework.log(`Keyboard shortcut error: ${error.message}`, 'error');
+            }
+        }
+    }
+    
+    handleKeyUp(e) {
+        // Clear key state for WASD navigation
+        this.state.navigation.keys[e.code] = false;
+        
+        // Track Ctrl key release
+        this.state.navigation.ctrlPressed = e.ctrlKey;
+    }
     
     handleResize() {
         const container = this.canvas.parentElement;
@@ -1486,6 +1600,133 @@ class AdvancedMapEditor {
         }, 10000);
     }
 
+    startNavigationLoop() {
+        const animate = (currentTime) => {
+            const deltaTime = (currentTime - this.state.navigation.lastTime) / 1000;
+            this.state.navigation.lastTime = currentTime;
+            
+            let moved = false;
+            const moveDistance = this.state.navigation.panSpeed * deltaTime;
+            
+            // WASD navigation
+            if (this.state.navigation.keys['KeyW']) {
+                this.state.viewport.offsetY += moveDistance;
+                moved = true;
+            }
+            if (this.state.navigation.keys['KeyS']) {
+                this.state.viewport.offsetY -= moveDistance;
+                moved = true;
+            }
+            if (this.state.navigation.keys['KeyA']) {
+                this.state.viewport.offsetX += moveDistance;
+                moved = true;
+            }
+            if (this.state.navigation.keys['KeyD']) {
+                this.state.viewport.offsetX -= moveDistance;
+                moved = true;
+            }
+            
+            if (moved) {
+                this.markDirty('all');
+            }
+            
+            requestAnimationFrame(animate);
+        };
+        
+        requestAnimationFrame(animate);
+    }
+    
+    getIslandAtPosition(worldX, worldY) {
+        // Check each island to see if the position is within its bounds
+        for (const island of this.islands) {
+            // Use image bounds if available, otherwise use radius
+            let width = island.width;
+            let height = island.height;
+            
+            if (!width || !height) {
+                // Fallback to radius-based bounds
+                const distance = Math.sqrt(
+                    Math.pow(worldX - island.x, 2) + Math.pow(worldY - island.y, 2)
+                );
+                
+                if (distance <= island.radius) {
+                    return island;
+                }
+            } else {
+                // Use rectangular bounds based on image dimensions
+                const halfWidth = width / 2;
+                const halfHeight = height / 2;
+                
+                if (worldX >= island.x - halfWidth && worldX <= island.x + halfWidth &&
+                    worldY >= island.y - halfHeight && worldY <= island.y + halfHeight) {
+                    return island;
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    updateIslandUI(island) {
+        // Update the UI controls to reflect the selected island's properties
+        const nameSelector = document.getElementById('islandSelector');
+        const xInput = document.getElementById('islandX');
+        const yInput = document.getElementById('islandY');
+        const rotationSlider = document.getElementById('islandRotation');
+        const rotationValue = document.getElementById('islandRotationValue');
+        const radiusSlider = document.getElementById('islandRadius');
+        const radiusValue = document.getElementById('islandRadiusValue');
+        
+        if (nameSelector) {
+            // Update island selector dropdown
+            nameSelector.innerHTML = '<option value="">-- Select Island --</option>';
+            this.islands.forEach(isl => {
+                const option = document.createElement('option');
+                option.value = isl.name;
+                option.textContent = isl.name;
+                option.selected = isl.name === island.name;
+                nameSelector.appendChild(option);
+            });
+        }
+        
+        if (xInput) xInput.value = Math.round(island.x);
+        if (yInput) yInput.value = Math.round(island.y);
+        if (rotationSlider) rotationSlider.value = island.rotation || 0;
+        if (rotationValue) rotationValue.value = island.rotation || 0;
+        if (radiusSlider) radiusSlider.value = island.radius || 150;
+        if (radiusValue) radiusValue.value = island.radius || 150;
+        
+        this.debugFramework.log(`Updated UI for island: ${island.name}`, 'debug');
+    }
+    
+    selectIslandFromDropdown() {
+        const selector = document.getElementById('islandSelector');
+        if (selector && selector.value) {
+            const island = this.islands.find(isl => isl.name === selector.value);
+            if (island) {
+                this.state.selectedIslands.clear();
+                this.state.selectedIslands.add(island.name);
+                this.selectedIsland = island;
+                this.updateIslandUI(island);
+                this.markDirty('all');
+                this.eventBus.emit('island:selected', { island });
+                this.debugFramework.log(`Selected island from dropdown: ${island.name}`, 'debug');
+            }
+        }
+    }
+    
+    toggleCollisionBounds() {
+        this.state.display.showCollisionBounds = !this.state.display.showCollisionBounds;
+        
+        const btn = document.getElementById('collisionBtn');
+        if (btn) {
+            btn.textContent = this.state.display.showCollisionBounds ? '🔴 Hide Collision' : '🔴 Show Collision';
+        }
+        
+        this.markDirty('all');
+        this.debugFramework.log(`Collision bounds: ${this.state.display.showCollisionBounds ? 'shown' : 'hidden'}`, 'debug');
+    }
+
     copy() {
         if (this.state.selectedIslands.size > 0) {
             const selectedData = Array.from(this.state.selectedIslands).map(id =>
@@ -1823,9 +2064,15 @@ KEYBOARD SHORTCUTS:
         
         // If island has a loaded image, draw it
         if (island.image && island.image.complete) {
-            // Calculate image dimensions based on island width/height or radius
-            const imageWidth = (island.width || island.radius * 2) * zoom;
-            const imageHeight = (island.height || island.radius * 2) * zoom;
+            // Use actual image dimensions scaled properly
+            let imageWidth = island.width * zoom;
+            let imageHeight = island.height * zoom;
+            
+            // If no width/height specified, use the actual image dimensions
+            if (!island.width || !island.height) {
+                imageWidth = island.image.naturalWidth * zoom * 0.5; // Scale down by default
+                imageHeight = island.image.naturalHeight * zoom * 0.5;
+            }
             
             // Apply rotation if specified
             if (island.rotation && island.rotation !== 0) {
@@ -1857,6 +2104,17 @@ KEYBOARD SHORTCUTS:
                 ctx.setLineDash([]);
             }
             
+            // Draw collision radius for reference
+            if (this.state.display.showCollisionBounds) {
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, screenRadius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            
         } else {
             // Fallback: Draw island circle if no image is loaded
             ctx.fillStyle = this.state.selectedIslands.has(island.name) ? '#3498db' : '#27ae60';
@@ -1884,7 +2142,7 @@ KEYBOARD SHORTCUTS:
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        const nameY = screenY + screenRadius + 20;
+        const nameY = screenY + Math.max(screenRadius, (island.height * zoom / 2)) + 20;
         ctx.strokeText(island.name, screenX, nameY);
         ctx.fillText(island.name, screenX, nameY);
         
