@@ -18,7 +18,7 @@ class CollisionManager {
         // Debug info
         this.lastCollisionInfo = null;
         
-        // Town area definitions within island boundaries
+        // Town area definitions within island boundariesmake
         this.initializeTownAreas();
         
         console.log('🎯 Enhanced Collision Manager initialized');
