@@ -472,7 +472,19 @@ class AdvancedMapEditor {
                 past: [],
                 present: null,
                 future: [],
-                maxSize: 100
+                maxSize: 50,
+                enabled: true,
+                actionTypes: [
+                    'island:move',
+                    'island:rotate', 
+                    'island:resize',
+                    'island:add',
+                    'island:delete',
+                    'collision:add',
+                    'collision:remove',
+                    'collision:modify',
+                    'viewport:change'
+                ]
             }
         };
         
@@ -538,6 +550,9 @@ class AdvancedMapEditor {
             
             this.debugFramework.log(`Advanced Map Editor v${this.version} ready`, 'info');
             console.log(`✅ GORET Advanced Map Editor v${this.version} ready`);
+            
+            // Save initial state for undo system
+            this.saveUndoState('editor:init', 'Map editor initialized');
             
             // Start render loop
             this.requestRender();
@@ -1068,6 +1083,10 @@ class AdvancedMapEditor {
                     this.state.selectedIslands.clear();
                     this.state.selectedIslands.add(clickedIsland.name);
                     this.selectedIsland = clickedIsland;
+                    
+                    // Save state before drag (not on selection)
+                    this.saveUndoState('island:beforeMove', `Before moving ${clickedIsland.name}`);
+                    
                     this.state.navigation.isDragging = true;
                     this.state.navigation.dragStart.x = this.state.navigation.mousePos.x;
                     this.state.navigation.dragStart.y = this.state.navigation.mousePos.y;
@@ -1091,7 +1110,7 @@ class AdvancedMapEditor {
     handleMouseUp(e) {
         this.performanceMonitor.startOperation('mouse-up');
         
-        // Reset drag states
+        // Reset drag states (undo state already saved in mouse down)
         this.state.navigation.isDragging = false;
         this.state.navigation.isPanning = false;
         
@@ -1156,8 +1175,15 @@ class AdvancedMapEditor {
             const worldDx = dx / this.state.viewport.zoom;
             const worldDy = dy / this.state.viewport.zoom;
             
+            // Store old position for collision update
+            const oldX = this.selectedIsland.x;
+            const oldY = this.selectedIsland.y;
+            
             this.selectedIsland.x += worldDx;
             this.selectedIsland.y += worldDy;
+            
+            // Move collision points with the island
+            this.moveCollisionWithIsland(this.selectedIsland, worldDx, worldDy);
             
             this.state.navigation.dragStart.x = this.state.navigation.mousePos.x;
             this.state.navigation.dragStart.y = this.state.navigation.mousePos.y;
@@ -1188,13 +1214,24 @@ class AdvancedMapEditor {
         const key = this.getKeyCombo(e);
         const handler = this.state.ui.shortcuts.get(key);
         
+        // Enhanced debug logging for undo system
+        if (key.includes('Ctrl+Z') || key.includes('Ctrl+Y')) {
+            this.debugFramework.log(`🔍 Undo/Redo key detected: ${key}, handler found: ${!!handler}`, 'info');
+            console.log(`🔍 Undo/Redo key detected: ${key}, handler found: ${!!handler}`);
+        }
+        
         if (handler) {
             e.preventDefault();
             try {
+                this.debugFramework.log(`✅ Executing shortcut: ${key}`, 'debug');
                 handler();
             } catch (error) {
-                this.debugFramework.log(`Keyboard shortcut error: ${error.message}`, 'error');
+                this.debugFramework.log(`❌ Keyboard shortcut error for ${key}: ${error.message}`, 'error');
+                console.error(`❌ Keyboard shortcut error for ${key}:`, error);
             }
+        } else if (key.includes('Ctrl')) {
+            // Log all Ctrl combinations for debugging
+            this.debugFramework.log(`⚠️ No handler found for: ${key}`, 'warn');
         }
     }
     
@@ -1231,34 +1268,99 @@ class AdvancedMapEditor {
         if (event.ctrlKey) parts.push('Ctrl');
         if (event.shiftKey) parts.push('Shift');
         if (event.altKey) parts.push('Alt');
-        parts.push(event.key);
-        return parts.join('+');
+        
+        // Use uppercase for consistency and handle special cases
+        let key = event.key;
+        if (key.length === 1) {
+            key = key.toUpperCase();
+        }
+        
+        parts.push(key);
+        const combo = parts.join('+');
+        
+        // Enhanced debug logging for undo/redo specifically
+        if (combo.includes('Ctrl+Z') || combo.includes('Ctrl+Y')) {
+            this.debugFramework.log(`🎹 Key combo detected: ${combo} (event.key: ${event.key}, event.code: ${event.code})`, 'info');
+            console.log(`🎹 Key combo detected: ${combo} (event.key: ${event.key}, event.code: ${event.code})`);
+        } else {
+            this.debugFramework.log(`Key combo: ${combo}`, 'debug');
+        }
+        
+        return combo;
     }
     
     // Tool implementations
     undo() {
+        console.log('🔄 Undo method called');
+        this.debugFramework.log('🔄 Undo method called', 'info');
+        
+        console.log('📊 History state:', {
+            pastLength: this.state.history.past.length,
+            futureLength: this.state.history.future.length,
+            hasPresent: !!this.state.history.present
+        });
+        
         if (this.state.history.past.length > 0) {
-            const currentState = this.state.history.present;
-            const previousState = this.state.history.past.pop();
-            
-            this.state.history.future.unshift(currentState);
-            this.state.history.present = previousState;
-            
-            this.restoreState(previousState);
-            this.debugFramework.log('Undo performed', 'debug');
+            try {
+                const currentState = this.state.history.present;
+                const previousState = this.state.history.past.pop();
+                
+                this.state.history.future.unshift(currentState);
+                this.state.history.present = previousState;
+                
+                this.debugFramework.log(`🔄 Undoing: ${previousState.actionType} - ${previousState.description}`, 'info');
+                console.log(`🔄 Undoing: ${previousState.actionType} - ${previousState.description}`);
+                
+                this.restoreState(previousState);
+                
+                // Show visual feedback
+                this.showStatusMessage(`Undid: ${previousState.description || previousState.actionType}`, 'success');
+            } catch (error) {
+                this.debugFramework.log(`❌ Undo error: ${error.message}`, 'error');
+                console.error('❌ Undo error:', error);
+                this.showStatusMessage('Undo failed', 'error');
+            }
+        } else {
+            this.debugFramework.log('⚠️ Nothing to undo', 'warn');
+            console.log('⚠️ Nothing to undo');
+            this.showStatusMessage('Nothing to undo', 'info');
         }
     }
     
     redo() {
+        console.log('🔃 Redo method called');
+        this.debugFramework.log('🔃 Redo method called', 'info');
+        
+        console.log('📊 History state:', {
+            pastLength: this.state.history.past.length,
+            futureLength: this.state.history.future.length,
+            hasPresent: !!this.state.history.present
+        });
+        
         if (this.state.history.future.length > 0) {
-            const currentState = this.state.history.present;
-            const nextState = this.state.history.future.shift();
-            
-            this.state.history.past.push(currentState);
-            this.state.history.present = nextState;
-            
-            this.restoreState(nextState);
-            this.debugFramework.log('Redo performed', 'debug');
+            try {
+                const currentState = this.state.history.present;
+                const nextState = this.state.history.future.shift();
+                
+                this.state.history.past.push(currentState);
+                this.state.history.present = nextState;
+                
+                this.debugFramework.log(`🔃 Redoing: ${nextState.actionType} - ${nextState.description}`, 'info');
+                console.log(`🔃 Redoing: ${nextState.actionType} - ${nextState.description}`);
+                
+                this.restoreState(nextState);
+                
+                // Show visual feedback
+                this.showStatusMessage(`Redid: ${nextState.description || nextState.actionType}`, 'success');
+            } catch (error) {
+                this.debugFramework.log(`❌ Redo error: ${error.message}`, 'error');
+                console.error('❌ Redo error:', error);
+                this.showStatusMessage('Redo failed', 'error');
+            }
+        } else {
+            this.debugFramework.log('⚠️ Nothing to redo', 'warn');
+            console.log('⚠️ Nothing to redo');
+            this.showStatusMessage('Nothing to redo', 'info');
         }
     }
     
@@ -1608,6 +1710,63 @@ class AdvancedMapEditor {
             }
         }, 10000);
     }
+    
+    updateUndoRedoButtons() {
+        const canUndo = this.state.history.past.length > 0;
+        const canRedo = this.state.history.future.length > 0;
+        
+        // Update button states if they exist
+        const undoBtn = document.querySelector('[data-action="undo"]');
+        const redoBtn = document.querySelector('[data-action="redo"]');
+        
+        if (undoBtn) {
+            undoBtn.disabled = !canUndo;
+            undoBtn.title = canUndo ? 
+                `Undo: ${this.state.history.past[this.state.history.past.length - 1]?.description || 'Last action'}` : 
+                'Nothing to undo';
+        }
+        
+        if (redoBtn) {
+            redoBtn.disabled = !canRedo;
+            redoBtn.title = canRedo ? 
+                `Redo: ${this.state.history.future[0]?.description || 'Next action'}` : 
+                'Nothing to redo';
+        }
+        
+        // Update status display
+        const statusInfo = document.getElementById('selectionInfo');
+        if (statusInfo) {
+            const historyInfo = `History: ${this.state.history.past.length} undo, ${this.state.history.future.length} redo`;
+            statusInfo.setAttribute('title', historyInfo);
+        }
+    }
+    
+    showStatusMessage(message, type = 'info') {
+        const statusElement = document.getElementById('statusMessage');
+        if (statusElement) {
+            statusElement.textContent = message;
+            statusElement.className = `status-${type}`;
+            
+            // Clear after 3 seconds
+            setTimeout(() => {
+                statusElement.textContent = 'Advanced Map Editor Ready';
+                statusElement.className = '';
+            }, 3000);
+        }
+        
+        this.debugFramework.log(message, type);
+    }
+    
+    recordAction(actionType, description, beforeState = null) {
+        // This method can be called before an action to record the state
+        if (beforeState) {
+            // If a before state is provided, use it
+            this.saveUndoState(actionType, description);
+        } else {
+            // Otherwise save current state
+            this.saveUndoState(actionType, description);
+        }
+    }
 
     startNavigationLoop() {
         const animate = (currentTime) => {
@@ -1735,6 +1894,155 @@ class AdvancedMapEditor {
         this.markDirty('all');
         this.debugFramework.log(`Collision bounds: ${this.state.display.showCollisionBounds ? 'shown' : 'hidden'}`, 'debug');
     }
+    
+    showHistoryPanel() {
+        const history = this.state.history;
+        const historyList = [];
+        
+        // Add past actions (in reverse order, most recent first)
+        history.past.slice().reverse().forEach((state, index) => {
+            historyList.push({
+                type: 'past',
+                action: state.actionType,
+                description: state.description,
+                timestamp: new Date(state.timestamp).toLocaleTimeString(),
+                index: history.past.length - index - 1
+            });
+        });
+        
+        // Add current state
+        if (history.present) {
+            historyList.push({
+                type: 'current',
+                action: history.present.actionType,
+                description: history.present.description,
+                timestamp: new Date(history.present.timestamp).toLocaleTimeString(),
+                index: -1
+            });
+        }
+        
+        // Add future actions
+        history.future.forEach((state, index) => {
+            historyList.push({
+                type: 'future',
+                action: state.actionType,
+                description: state.description,
+                timestamp: new Date(state.timestamp).toLocaleTimeString(),
+                index: index
+            });
+        });
+        
+        const historyHTML = historyList.map(item => {
+            const typeClass = item.type === 'current' ? 'current' : 
+                            item.type === 'past' ? 'past' : 'future';
+            const typeIcon = item.type === 'current' ? '▶' : 
+                           item.type === 'past' ? '↶' : '↷';
+            
+            return `
+                <div class="history-item ${typeClass}" title="${item.action}">
+                    <span class="history-icon">${typeIcon}</span>
+                    <span class="history-description">${item.description || item.action}</span>
+                    <span class="history-time">${item.timestamp}</span>
+                </div>
+            `;
+        }).join('');
+        
+        const content = `
+            <div style="max-height: 400px; overflow-y: auto; font-size: 12px;">
+                <h4 style="margin: 0 0 10px 0; color: #3498db;">Action History (${history.past.length + history.future.length + 1} total)</h4>
+                ${historyHTML || '<div style="color: #7f8c8d; font-style: italic;">No history available</div>'}
+            </div>
+            <style>
+                .history-item { padding: 5px; border-left: 3px solid transparent; margin: 2px 0; display: flex; align-items: center; gap: 8px; }
+                .history-item.current { border-left-color: #e74c3c; background: rgba(231, 76, 60, 0.1); }
+                .history-item.past { border-left-color: #27ae60; background: rgba(39, 174, 96, 0.1); }
+                .history-item.future { border-left-color: #f39c12; background: rgba(243, 156, 18, 0.1); }
+                .history-icon { width: 12px; text-align: center; }
+                .history-description { flex: 1; }
+                .history-time { font-size: 10px; color: #7f8c8d; }
+            </style>
+        `;
+        
+        if (window.showDebugPanel && window.updateDebugContent) {
+            window.showDebugPanel();
+            window.updateDebugContent(content);
+        }
+    }
+    
+    testUndoSystem() {
+        console.log('🧪 Testing undo system...');
+        this.debugFramework.log('🧪 Testing undo system...', 'info');
+        
+        // Test keyboard shortcut detection
+        const shortcuts = Array.from(this.state.ui.shortcuts.keys());
+        console.log(`📝 Available shortcuts: ${shortcuts.join(', ')}`);
+        this.debugFramework.log(`Keyboard shortcuts available: ${shortcuts.join(', ')}`, 'debug');
+        
+        // Show undo-specific shortcuts
+        const undoShortcuts = shortcuts.filter(key => key.includes('Ctrl+Z') || key.includes('Ctrl+Y'));
+        console.log(`⏪ Undo/Redo shortcuts: ${undoShortcuts.join(', ')}`);
+        
+        // Test keyboard event simulation
+        console.log('🔍 Testing keyboard shortcut detection...');
+        const testEvent = new KeyboardEvent('keydown', {
+            key: 'z',
+            ctrlKey: true,
+            bubbles: true
+        });
+        const combo = this.getKeyCombo(testEvent);
+        const handler = this.state.ui.shortcuts.get(combo);
+        console.log(`Test Ctrl+Z combo: "${combo}", handler found: ${!!handler}`);
+        
+        if (handler) {
+            console.log('✅ Keyboard shortcut handler exists');
+        } else {
+            console.log('❌ No keyboard shortcut handler found!');
+        }
+        
+        // Test history state
+        const history = this.state.history;
+        console.log(`📚 History state - Past: ${history.past.length}, Future: ${history.future.length}, Enabled: ${history.enabled}`);
+        this.debugFramework.log(`History state - Past: ${history.past.length}, Future: ${history.future.length}, Enabled: ${history.enabled}`, 'debug');
+        
+        // Test a simple undo/redo cycle
+        if (this.islands.length > 0) {
+            const originalX = this.islands[0].x;
+            console.log(`🎯 Testing with island "${this.islands[0].name}" at X: ${originalX}`);
+            
+            // Make a change
+            console.log('💾 Saving undo state...');
+            this.saveUndoState('test:modify', 'Test modification');
+            this.islands[0].x = originalX + 100;
+            this.markDirty('all');
+            
+            console.log(`🎯 Made test change: island X from ${originalX} to ${this.islands[0].x}`);
+            this.debugFramework.log(`Made test change: island X from ${originalX} to ${this.islands[0].x}`, 'debug');
+            
+            // Try to undo
+            setTimeout(() => {
+                console.log('⏪ Testing undo...');
+                this.undo();
+                console.log(`🎯 After undo: island X is ${this.islands[0].x}`);
+                this.debugFramework.log(`After undo: island X is ${this.islands[0].x}`, 'debug');
+                
+                // Try to redo
+                setTimeout(() => {
+                    console.log('⏩ Testing redo...');
+                    this.redo();
+                    console.log(`🎯 After redo: island X is ${this.islands[0].x}`);
+                    this.debugFramework.log(`After redo: island X is ${this.islands[0].x}`, 'debug');
+                    
+                    console.log('✅ Undo system test completed - check results above');
+                }, 500);
+            }, 500);
+        } else {
+            console.log('❌ No islands available for testing');
+            this.debugFramework.log('No islands available for testing', 'warn');
+        }
+        
+        // Show test results
+        this.showStatusMessage('Undo system test running - check browser console', 'info');
+    }
 
     copy() {
         if (this.state.selectedIslands.size > 0) {
@@ -1760,7 +2068,7 @@ class AdvancedMapEditor {
                 this.islands.push(newIsland);
             });
             
-            this.saveUndoState();
+            this.saveUndoState('island:paste', `Pasted ${this.state.clipboard.length} island(s)`);
             this.markDirty('all');
             this.debugFramework.log(`Pasted ${this.state.clipboard.length} islands`, 'debug');
         }
@@ -2003,22 +2311,137 @@ KEYBOARD SHORTCUTS:
         ];
     }
     
-    saveUndoState() {
-        const state = JSON.parse(JSON.stringify(this.islands));
+    saveUndoState(actionType = 'unknown', description = '') {
+        if (!this.state.history.enabled) return;
         
-        this.state.history.past.push(this.state.history.present);
+        const state = {
+            islands: JSON.parse(JSON.stringify(this.islands)),
+            viewport: JSON.parse(JSON.stringify(this.state.viewport)),
+            selectedIslands: new Set(this.state.selectedIslands),
+            timestamp: Date.now(),
+            actionType,
+            description
+        };
+        
+        // Don't save if state hasn't changed
+        if (this.state.history.present && this.statesEqual(this.state.history.present, state)) {
+            return;
+        }
+        
+        // Push current state to past
+        if (this.state.history.present) {
+            this.state.history.past.push(this.state.history.present);
+        }
+        
         this.state.history.present = state;
-        this.state.history.future = [];
+        this.state.history.future = []; // Clear future when new action is performed
         
         // Limit history size
         if (this.state.history.past.length > this.state.history.maxSize) {
             this.state.history.past.shift();
         }
+        
+        this.debugFramework.log(`Undo state saved: ${actionType} - ${description}`, 'debug');
+        this.updateUndoRedoButtons();
+    }
+    
+    statesEqual(state1, state2) {
+        // Quick comparison to avoid saving identical states
+        return JSON.stringify(state1.islands) === JSON.stringify(state2.islands) &&
+               JSON.stringify(state1.viewport) === JSON.stringify(state2.viewport);
     }
     
     restoreState(state) {
-        this.islands = JSON.parse(JSON.stringify(state));
-        this.markDirty('all');
+        console.log('🔧 RestoreState called with:', {
+            actionType: state.actionType,
+            description: state.description,
+            islandCount: state.islands?.length,
+            hasViewport: !!state.viewport,
+            selectedCount: state.selectedIslands?.size || 0
+        });
+        
+        // Temporarily disable history to prevent recursive saves
+        const wasEnabled = this.state.history.enabled;
+        this.state.history.enabled = false;
+        
+        try {
+            // Save current image references before restoring
+            const currentImages = new Map();
+            this.islands.forEach(island => {
+                if (island.image) {
+                    currentImages.set(island.name, island.image);
+                }
+            });
+            
+            console.log(`💾 Preserved ${currentImages.size} image references`);
+            
+            // Restore islands
+            const oldIslandCount = this.islands.length;
+            this.islands = JSON.parse(JSON.stringify(state.islands));
+            console.log(`🏝️ Restored ${this.islands.length} islands (was ${oldIslandCount})`);
+            
+            // Restore image references (they don't serialize/deserialize properly)
+            let imagesRestored = 0;
+            let imagesReloaded = 0;
+            
+            this.islands.forEach(island => {
+                if (currentImages.has(island.name)) {
+                    island.image = currentImages.get(island.name);
+                    imagesRestored++;
+                } else {
+                    // Try to reload the image if it's missing
+                    if (island.imagePath) {
+                        this.loadIslandImageFromPath(island, island.imagePath);
+                        imagesReloaded++;
+                    } else {
+                        this.loadDefaultIslandImage(island);
+                        imagesReloaded++;
+                    }
+                }
+            });
+            
+            console.log(`🖼️ Images: ${imagesRestored} restored, ${imagesReloaded} reloaded`);
+            
+            // Restore viewport
+            if (state.viewport) {
+                const oldZoom = this.state.viewport.zoom;
+                this.state.viewport = JSON.parse(JSON.stringify(state.viewport));
+                console.log(`🔍 Viewport restored: zoom ${oldZoom} → ${this.state.viewport.zoom}`);
+            }
+            
+            // Restore selections
+            if (state.selectedIslands) {
+                this.state.selectedIslands = new Set(state.selectedIslands);
+                this.selectedIsland = this.islands.find(island => 
+                    this.state.selectedIslands.has(island.name)
+                ) || null;
+                console.log(`✅ Selection restored: ${this.state.selectedIslands.size} selected, primary: ${this.selectedIsland?.name || 'none'}`);
+            } else {
+                this.state.selectedIslands.clear();
+                this.selectedIsland = null;
+                console.log('✅ Selections cleared');
+            }
+            
+            // Update UI to reflect restored state
+            if (this.selectedIsland) {
+                setTimeout(() => {
+                    this.updateIslandUI(this.selectedIsland);
+                }, 10);
+            }
+            
+            this.markDirty('all');
+            this.debugFramework.log(`✅ State restored: ${state.actionType} - ${state.description}`, 'info');
+            console.log(`✅ State restoration complete: ${state.actionType} - ${state.description}`);
+            
+        } catch (error) {
+            this.debugFramework.log(`❌ Error restoring state: ${error.message}`, 'error');
+            console.error('❌ Error restoring state:', error);
+            this.showStatusMessage('Error restoring state', 'error');
+        } finally {
+            // Re-enable history
+            this.state.history.enabled = wasEnabled;
+            this.updateUndoRedoButtons();
+        }
     }
     
     autoSave() {
@@ -2064,6 +2487,102 @@ KEYBOARD SHORTCUTS:
         ctx.setLineDash([]);
     }
     
+    /**
+     * Move collision points with island when dragging
+     */
+    moveCollisionWithIsland(island, deltaX, deltaY) {
+        if (!island.collision || island.collision.length === 0) return;
+        
+        // Update all collision points by the same delta
+        island.collision.forEach(point => {
+            point.x += deltaX;
+            point.y += deltaY;
+        });
+        
+        this.debugFramework.log(`Moved ${island.collision.length} collision points with ${island.name}`, 'debug');
+    }
+    
+    /**
+     * Calculate bounding box of collision points
+     */
+    calculateCollisionBounds(collisionPoints) {
+        if (!collisionPoints || collisionPoints.length === 0) {
+            return { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
+        }
+        
+        let minX = Infinity, minY = Infinity;
+        let maxX = -Infinity, maxY = -Infinity;
+        
+        collisionPoints.forEach(point => {
+            minX = Math.min(minX, point.x);
+            minY = Math.min(minY, point.y);
+            maxX = Math.max(maxX, point.x);
+            maxY = Math.max(maxY, point.y);
+        });
+        
+        return {
+            minX, minY, maxX, maxY,
+            width: maxX - minX,
+            height: maxY - minY,
+            centerX: (minX + maxX) / 2,
+            centerY: (minY + maxY) / 2
+        };
+    }
+    
+    /**
+     * Fit island image to collision boundaries
+     */
+    fitImageToCollisionBounds(island) {
+        if (!island.collision || island.collision.length === 0) {
+            this.debugFramework.log(`Cannot fit ${island.name} - no collision points`, 'warn');
+            return false;
+        }
+        
+        const bounds = this.calculateCollisionBounds(island.collision);
+        
+        // Add some padding to the bounds (10% on each side)
+        const padding = Math.max(bounds.width, bounds.height) * 0.1;
+        const paddedWidth = bounds.width + (padding * 2);
+        const paddedHeight = bounds.height + (padding * 2);
+        
+        // Update island dimensions
+        island.width = paddedWidth;
+        island.height = paddedHeight;
+        island.radius = Math.max(paddedWidth, paddedHeight) * 0.5;
+        
+        // Mark that this island has been fitted to bounds
+        island.fittedToBounds = true;
+        
+        this.debugFramework.log(`Fitted ${island.name} to collision bounds: ${paddedWidth.toFixed(0)}x${paddedHeight.toFixed(0)}`, 'info');
+        this.markDirty('all');
+        
+        return true;
+    }
+    
+    /**
+     * Auto-fit all islands with collision data to their bounds
+     */
+    autoFitAllIslands() {
+        let fittedCount = 0;
+        
+        this.islands.forEach(island => {
+            if (island.collision && island.collision.length > 0 && !island.fittedToBounds) {
+                if (this.fitImageToCollisionBounds(island)) {
+                    fittedCount++;
+                }
+            }
+        });
+        
+        if (fittedCount > 0) {
+            this.showStatusMessage(`Auto-fitted ${fittedCount} islands to collision bounds`, 'success');
+            this.debugFramework.log(`Auto-fitted ${fittedCount} islands to collision bounds`, 'info');
+        } else {
+            this.showStatusMessage('No islands needed fitting', 'info');
+        }
+        
+        return fittedCount;
+    }
+
     drawIsland(ctx, island, zoom, offsetX, offsetY) {
         const screenX = island.x * zoom + offsetX;
         const screenY = island.y * zoom + offsetY;
@@ -2082,6 +2601,11 @@ KEYBOARD SHORTCUTS:
         if (island.image && island.image.complete) {
             // Calculate appropriate image dimensions for rendering
             let imageWidth, imageHeight;
+            
+            // Auto-fit to collision bounds if available and not already fitted
+            if (island.collision && island.collision.length > 0 && !island.fittedToBounds) {
+                this.fitImageToCollisionBounds(island);
+            }
             
             if (island.width && island.height) {
                 // Use the specified width/height from island data (these are world dimensions)
@@ -2565,6 +3089,13 @@ if (typeof module !== 'undefined' && module.exports) {
         
         const removed = original - this.selectedIsland.collision.length;
         this.updateCollisionPointsList();
+        
+        // Refit image to optimized collision bounds
+        if (this.selectedIsland.collision.length > 0) {
+            this.selectedIsland.fittedToBounds = false; // Reset flag to allow refitting
+            this.fitImageToCollisionBounds(this.selectedIsland);
+        }
+        
         this.debugFramework.log(`Basic optimize: removed ${removed} redundant points`, removed > 0 ? 'info' : 'debug');
         this.markDirty('all');
     }
