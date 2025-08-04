@@ -455,7 +455,13 @@ class AdvancedMapEditor {
                 isDragging: false,
                 isPanning: false,
                 dragStart: { x: 0, y: 0 },
-                ctrlPressed: false
+                ctrlPressed: false,
+                // New resize and rotation states
+                isResizing: false,
+                isRotating: false,
+                resizeHandle: null, // 'nw', 'ne', 'sw', 'se'
+                resizeStartBounds: null,
+                rotationStartAngle: 0
             },
             display: {
                 showGrid: true,
@@ -1076,29 +1082,74 @@ class AdvancedMapEditor {
                 }
                 return true;
             } else {
-                // Regular click: Check for island selection or start panning
-                const clickedIsland = this.getIslandAtPosition(this.worldMousePos.x, this.worldMousePos.y);
-                if (clickedIsland) {
-                    // Select single island and prepare for dragging
-                    this.state.selectedIslands.clear();
-                    this.state.selectedIslands.add(clickedIsland.name);
-                    this.selectedIsland = clickedIsland;
+                // Regular click: Check for resize/rotation handles first, then island selection
+                let handleFound = false;
+                
+                // Check for resize/rotation handles on selected islands
+                if (this.selectedIsland) {
+                    // Check for resize handle
+                    const resizeHandle = this.getResizeHandle(
+                        this.selectedIsland,
+                        this.state.navigation.mousePos.x,
+                        this.state.navigation.mousePos.y,
+                        this.state.viewport.zoom,
+                        this.state.viewport.offsetX,
+                        this.state.viewport.offsetY
+                    );
                     
-                    // Save state before drag (not on selection)
-                    this.saveUndoState('island:beforeMove', `Before moving ${clickedIsland.name}`);
-                    
-                    this.state.navigation.isDragging = true;
-                    this.state.navigation.dragStart.x = this.state.navigation.mousePos.x;
-                    this.state.navigation.dragStart.y = this.state.navigation.mousePos.y;
-                    this.debugFramework.log(`Selected and ready to drag: ${clickedIsland.name}`, 'debug');
-                    this.updateIslandUI(clickedIsland);
-                    this.markDirty('all');
-                    this.eventBus.emit('island:selected', { island: clickedIsland });
-                } else {
-                    // Start panning
-                    this.state.navigation.isPanning = true;
-                    this.state.navigation.dragStart.x = this.state.navigation.mousePos.x;
-                    this.state.navigation.dragStart.y = this.state.navigation.mousePos.y;
+                    if (resizeHandle) {
+                        this.state.navigation.isResizing = true;
+                        this.state.navigation.resizeHandle = resizeHandle;
+                        this.state.navigation.resizeStartBounds = null; // Reset for new resize
+                        this.saveUndoState('island:beforeResize', `Before resizing ${this.selectedIsland.name}`);
+                        this.debugFramework.log(`Started resizing island: ${this.selectedIsland.name} (${resizeHandle})`, 'debug');
+                        handleFound = true;
+                    } else {
+                        // Check for rotation handle
+                        const rotationHandle = this.getRotationHandle(
+                            this.selectedIsland,
+                            this.state.navigation.mousePos.x,
+                            this.state.navigation.mousePos.y,
+                            this.state.viewport.zoom,
+                            this.state.viewport.offsetX,
+                            this.state.viewport.offsetY
+                        );
+                        
+                        if (rotationHandle) {
+                            this.state.navigation.isRotating = true;
+                            this.state.navigation.rotationStartAngle = 0; // Reset for new rotation
+                            this.saveUndoState('island:beforeRotate', `Before rotating ${this.selectedIsland.name}`);
+                            this.debugFramework.log(`Started rotating island: ${this.selectedIsland.name}`, 'debug');
+                            handleFound = true;
+                        }
+                    }
+                }
+                
+                if (!handleFound) {
+                    // Regular click: Check for island selection or start panning
+                    const clickedIsland = this.getIslandAtPosition(this.worldMousePos.x, this.worldMousePos.y);
+                    if (clickedIsland) {
+                        // Select single island and prepare for dragging
+                        this.state.selectedIslands.clear();
+                        this.state.selectedIslands.add(clickedIsland.name);
+                        this.selectedIsland = clickedIsland;
+                        
+                        // Save state before drag (not on selection)
+                        this.saveUndoState('island:beforeMove', `Before moving ${clickedIsland.name}`);
+                        
+                        this.state.navigation.isDragging = true;
+                        this.state.navigation.dragStart.x = this.state.navigation.mousePos.x;
+                        this.state.navigation.dragStart.y = this.state.navigation.mousePos.y;
+                        this.debugFramework.log(`Selected and ready to drag: ${clickedIsland.name}`, 'debug');
+                        this.updateIslandUI(clickedIsland);
+                        this.markDirty('all');
+                        this.eventBus.emit('island:selected', { island: clickedIsland });
+                    } else {
+                        // Start panning
+                        this.state.navigation.isPanning = true;
+                        this.state.navigation.dragStart.x = this.state.navigation.mousePos.x;
+                        this.state.navigation.dragStart.y = this.state.navigation.mousePos.y;
+                    }
                 }
             }
         }
@@ -1113,6 +1164,22 @@ class AdvancedMapEditor {
         // Reset drag states (undo state already saved in mouse down)
         this.state.navigation.isDragging = false;
         this.state.navigation.isPanning = false;
+        
+        // Reset resize and rotation states
+        if (this.state.navigation.isResizing) {
+            this.state.navigation.isResizing = false;
+            this.state.navigation.resizeHandle = null;
+            this.state.navigation.resizeStartBounds = null;
+            this.saveUndoState('island:resize:complete', `Completed resize of ${this.selectedIsland?.name}`);
+            this.debugFramework.log('Resize operation completed', 'debug');
+        }
+        
+        if (this.state.navigation.isRotating) {
+            this.state.navigation.isRotating = false;
+            this.state.navigation.rotationStartAngle = 0;
+            this.saveUndoState('island:rotate:complete', `Completed rotation of ${this.selectedIsland?.name}`);
+            this.debugFramework.log('Rotation operation completed', 'debug');
+        }
         
         this.performanceMonitor.endOperation('mouse-up');
         return true;
@@ -1164,6 +1231,37 @@ class AdvancedMapEditor {
             this.state.navigation.dragStart.x = this.state.navigation.mousePos.x;
             this.state.navigation.dragStart.y = this.state.navigation.mousePos.y;
             this.markDirty('all');
+        }
+        
+        // Handle resize operation
+        if (this.state.navigation.isResizing && this.selectedIsland && this.handleResize) {
+            this.handleResize(
+                this.selectedIsland,
+                this.state.navigation.resizeHandle,
+                this.state.navigation.dragStart.x,
+                this.state.navigation.dragStart.y,
+                this.state.navigation.mousePos.x,
+                this.state.navigation.mousePos.y,
+                this.state.viewport.zoom
+            );
+            this.markDirty('all');
+            return;
+        }
+        
+        // Handle rotation operation
+        if (this.state.navigation.isRotating && this.selectedIsland && this.handleRotation) {
+            const centerX = this.selectedIsland.x * this.state.viewport.zoom + this.state.viewport.offsetX;
+            const centerY = this.selectedIsland.y * this.state.viewport.zoom + this.state.viewport.offsetY;
+            
+            this.handleRotation(
+                this.selectedIsland,
+                centerX,
+                centerY,
+                this.state.navigation.mousePos.x,
+                this.state.navigation.mousePos.y
+            );
+            this.markDirty('all');
+            return;
         }
         
         // Handle island dragging
@@ -2763,6 +2861,7 @@ KEYBOARD SHORTCUTS:
                 const screenY = island.y * zoom + offsetY;
                 const screenRadius = island.radius * zoom;
                 
+                // Draw main selection circle
                 ctx.strokeStyle = '#e74c3c';
                 ctx.lineWidth = 3;
                 ctx.setLineDash([8, 4]);
@@ -2771,6 +2870,12 @@ KEYBOARD SHORTCUTS:
                 ctx.arc(screenX, screenY, screenRadius + 5, 0, Math.PI * 2);
                 ctx.stroke();
                 ctx.setLineDash([]);
+                
+                // Draw resize handles and rotation handle for selected island
+                if (this.drawResizeHandles && this.drawRotationHandle) {
+                    this.drawResizeHandles(ctx, island, zoom, offsetX, offsetY);
+                    this.drawRotationHandle(ctx, island, zoom, offsetX, offsetY);
+                }
             }
         }
     }

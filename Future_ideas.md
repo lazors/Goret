@@ -20,6 +20,7 @@ Extend the current island data structure to support advanced features:
 ```
 
 **Benefits:**
+
 - Time-based visual variations (day/night cycles)
 - Biome-specific styling and effects
 - Thumbnail support for fast UI loading
@@ -35,13 +36,14 @@ Implement Level-of-Detail (LOD) system for performance optimization:
   name: "Port Royal",
   images: {
     detail: "assets/Islands/Port_Royal_detail.png", // Close zoom
-    medium: "assets/Islands/Port_Royal_med.png",    // Normal zoom  
+    medium: "assets/Islands/Port_Royal_med.png",    // Normal zoom
     distant: "assets/Islands/Port_Royal_far.png"    // Far zoom
   }
 }
 ```
 
 **Implementation:**
+
 - Automatic image switching based on zoom level
 - Reduces memory usage for distant islands
 - Maintains visual quality at appropriate zoom levels
@@ -66,6 +68,7 @@ generateIsland(options) {
 ```
 
 **Features:**
+
 - Infinite world expansion without manual creation
 - Automatic collision boundary generation
 - Varied shapes and vegetation density
@@ -114,20 +117,20 @@ const biomes = {
     islandDensity: 0.3,
     avgSize: 150,
     vegetation: 0.8,
-    colors: ["#2d5f3f", "#4f8f6f", "#7fbf9f"]
+    colors: ['#2d5f3f', '#4f8f6f', '#7fbf9f'],
   },
   arctic: {
     islandDensity: 0.1,
     avgSize: 200,
     vegetation: 0.2,
-    colors: ["#87ceeb", "#b0e0e6", "#f0f8ff"]
+    colors: ['#87ceeb', '#b0e0e6', '#f0f8ff'],
   },
   volcanic: {
     islandDensity: 0.2,
     avgSize: 100,
     vegetation: 0.3,
-    colors: ["#8b4513", "#a0522d", "#cd853f"]
-  }
+    colors: ['#8b4513', '#a0522d', '#cd853f'],
+  },
 };
 ```
 
@@ -154,7 +157,7 @@ generateTradeRoutes(islands) {
 class AssetManager {
   loadBasedOnDistance(island, playerPosition) {
     const distance = calculateDistance(island, playerPosition);
-    
+
     if (distance < 500) {
       return this.loadDetailedAssets(island);
     } else if (distance < 1500) {
@@ -172,10 +175,10 @@ class AssetManager {
 // Combine small islands into single texture atlas
 const atlasConfig = {
   smallIslands: {
-    source: "assets/Islands/small/",
-    output: "assets/Atlases/small_islands_atlas.png",
-    maxSize: 2048
-  }
+    source: 'assets/Islands/small/',
+    output: 'assets/Atlases/small_islands_atlas.png',
+    maxSize: 2048,
+  },
 };
 ```
 
@@ -203,18 +206,18 @@ const atlasConfig = {
 
 ```javascript
 const islandEvents = {
-  "Port Royal": [
+  'Port Royal': [
     {
-      type: "festival",
-      duration: "3d",
-      effects: { trade_bonus: 1.5, reputation_gain: 2.0 }
+      type: 'festival',
+      duration: '3d',
+      effects: { trade_bonus: 1.5, reputation_gain: 2.0 },
     },
     {
-      type: "hurricane",
-      duration: "1d", 
-      effects: { visibility: 0.3, damage_risk: 0.8 }
-    }
-  ]
+      type: 'hurricane',
+      duration: '1d',
+      effects: { visibility: 0.3, damage_risk: 0.8 },
+    },
+  ],
 };
 ```
 
@@ -230,7 +233,7 @@ const editorFeatures = {
   structurePlacement: true,
   lightingEditor: true,
   weatherSimulation: true,
-  tradeRouteVisualizer: true
+  tradeRouteVisualizer: true,
 };
 ```
 
@@ -240,15 +243,15 @@ const editorFeatures = {
 // Automated content generation
 class ContentPipeline {
   generateIslandVariations(baseIsland, count = 5) {
-    return Array.from({length: count}, () => 
+    return Array.from({ length: count }, () =>
       this.createVariation(baseIsland)
     );
   }
-  
+
   autoGenerateCollision(imagePath) {
     return this.traceImageBoundary(imagePath, {
       simplification: 0.8,
-      smoothing: true
+      smoothing: true,
     });
   }
 }
@@ -263,13 +266,13 @@ const mobileConfig = {
   touchControls: {
     panGesture: true,
     pinchZoom: true,
-    longPressSelect: true
+    longPressSelect: true,
   },
   performance: {
     reducedParticles: true,
     lowerResolutionAssets: true,
-    aggressiveCulling: true
-  }
+    aggressiveCulling: true,
+  },
 };
 ```
 
@@ -286,25 +289,37 @@ class WebGLRenderer {
 }
 ```
 
+### 7. Reputation system
+
+```javascript
+reputation(hero) {
+  return reputation
+    .filter(reputation => reputation.faction === "england")
+}
+```
+
 ---
 
 ## 🎯 Implementation Priority
 
 ### Phase 1 (Immediate)
+
 - [ ] Enhanced PNG Pipeline with thumbnails
 - [ ] Multi-resolution image support
 - [ ] Smart asset loading based on distance
 
 ### Phase 2 (Short-term)
+
 - [ ] Procedural island generation
 - [ ] Biome system implementation
 - [ ] Weather and lighting effects
 
 ### Phase 3 (Long-term)
+
 - [ ] Advanced map editor tools
 - [ ] WebGL renderer migration
 - [ ] Mobile platform support
 
 ---
 
-*This document serves as a roadmap for expanding the GORET pirate game world with scalable, performance-optimized features while maintaining the high-quality visual standards established by the current PNG island system.*
+_This document serves as a roadmap for expanding the GORET pirate game world with scalable, performance-optimized features while maintaining the high-quality visual standards established by the current PNG island system._
