@@ -354,7 +354,7 @@
             </div>
             
             <div class="canvas-wrapper">
-                <canvas id="mapCanvas" width="1600" height="1000"></canvas>
+                <canvas id="mapCanvas" width="1600" height="1000" oncontextmenu="return false;"></canvas>
             </div>
             
             <div class="status-bar">
@@ -395,6 +395,10 @@
                 <button class="btn btn-secondary" onclick="advancedEditor.testImagePaths()">
                     🔍 Test Paths
                 </button>
+                
+                <button class="btn btn-secondary" onclick="advancedEditor.debugInfo()">
+                    🐛 Debug Info
+                </button>
             </div>
             
             <!-- Island Management -->
@@ -430,6 +434,17 @@
                     <div class="input-group" style="flex: 1;">
                         <label>Y Position</label>
                         <input type="number" id="islandY" value="0">
+                    </div>
+                </div>
+                
+                <div class="input-row">
+                    <div class="input-group" style="flex: 1;">
+                        <label>Width</label>
+                        <input type="number" id="islandWidth" value="400" min="50" max="2000">
+                    </div>
+                    <div class="input-group" style="flex: 1;">
+                        <label>Height</label>
+                        <input type="number" id="islandHeight" value="300" min="50" max="2000">
                     </div>
                 </div>
                 
@@ -531,7 +546,7 @@
                 </button>
                 
                 <button class="btn btn-primary" onclick="advancedEditor.toggleCollisionBounds()" id="collisionBtn">
-                    🔴 Show Collision
+                    🔴 Hide Collision
                 </button>
             </div>
             
@@ -683,15 +698,34 @@
                 }
             }, 1000);
             
-            // Update collision stats
-            advancedEditor?.eventBus.on('island:selected', (data) => {
-                updateCollisionStats();
-            });
+            // Update collision stats and UI when island is selected
+            if (advancedEditor?.eventBus) {
+                advancedEditor.eventBus.on('island:selected', (data) => {
+                    updateCollisionStats();
+                    updateIslandPropertiesUI();
+                });
+            }
+        }
+        
+        function updateIslandPropertiesUI() {
+            if (!advancedEditor?.selectedIsland) return;
+            
+            const island = advancedEditor.selectedIsland;
+            
+            // Update all the input fields with current island values
+            document.getElementById('islandX').value = island.x || 0;
+            document.getElementById('islandY').value = island.y || 0;
+            document.getElementById('islandWidth').value = island.width || 400;
+            document.getElementById('islandHeight').value = island.height || 300;
+            document.getElementById('islandRotation').value = island.rotation || 0;
+            document.getElementById('islandRotationValue').value = island.rotation || 0;
+            document.getElementById('islandRadius').value = island.radius || 150;
+            document.getElementById('islandRadiusValue').value = island.radius || 150;
         }
         
         function setupInputHandlers() {
             // Island property inputs
-            const inputs = ['islandX', 'islandY', 'islandRotation', 'islandRotationValue', 'islandRadius', 'islandRadiusValue'];
+            const inputs = ['islandX', 'islandY', 'islandWidth', 'islandHeight', 'islandRotation', 'islandRotationValue', 'islandRadius', 'islandRadiusValue'];
             
             inputs.forEach(inputId => {
                 const input = document.getElementById(inputId);
@@ -714,6 +748,12 @@
                     break;
                 case 'islandY':
                     island.y = parseFloat(value);
+                    break;
+                case 'islandWidth':
+                    island.width = parseFloat(value);
+                    break;
+                case 'islandHeight':
+                    island.height = parseFloat(value);
                     break;
                 case 'islandRotation':
                 case 'islandRotationValue':

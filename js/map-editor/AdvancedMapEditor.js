@@ -461,7 +461,7 @@ class AdvancedMapEditor {
                 showGrid: true,
                 showBounds: true,
                 showWaves: false,
-                showCollisionBounds: false
+                showCollisionBounds: true
             },
             ui: {
                 panels: new Map(),
@@ -2115,6 +2115,11 @@ KEYBOARD SHORTCUTS:
                 ctx.setLineDash([]);
             }
             
+            // Draw collision polygon if available
+            if (island.collision && island.collision.length > 0) {
+                this.drawCollisionPolygon(ctx, island.collision, zoom, offsetX, offsetY);
+            }
+            
         } else {
             // Fallback: Draw island circle if no image is loaded
             ctx.fillStyle = this.state.selectedIslands.has(island.name) ? '#3498db' : '#27ae60';
@@ -2145,6 +2150,59 @@ KEYBOARD SHORTCUTS:
         const nameY = screenY + Math.max(screenRadius, (island.height * zoom / 2)) + 20;
         ctx.strokeText(island.name, screenX, nameY);
         ctx.fillText(island.name, screenX, nameY);
+        
+        ctx.restore();
+    }
+    
+    drawCollisionPolygon(ctx, collisionPoints, zoom, offsetX, offsetY) {
+        if (!collisionPoints || collisionPoints.length < 3) return;
+        
+        ctx.save();
+        
+        // Draw collision polygon outline
+        ctx.strokeStyle = this.state.display.showCollisionBounds ? 'rgba(231, 76, 60, 0.8)' : 'rgba(231, 76, 60, 0.3)';
+        ctx.fillStyle = 'rgba(231, 76, 60, 0.1)';
+        ctx.lineWidth = 2;
+        
+        ctx.beginPath();
+        for (let i = 0; i < collisionPoints.length; i++) {
+            const point = collisionPoints[i];
+            const screenX = point.x * zoom + offsetX;
+            const screenY = point.y * zoom + offsetY;
+            
+            if (i === 0) {
+                ctx.moveTo(screenX, screenY);
+            } else {
+                ctx.lineTo(screenX, screenY);
+            }
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // Draw collision points if collision bounds are shown
+        if (this.state.display.showCollisionBounds) {
+            collisionPoints.forEach((point, index) => {
+                const screenX = point.x * zoom + offsetX;
+                const screenY = point.y * zoom + offsetY;
+                
+                ctx.fillStyle = '#e74c3c';
+                ctx.strokeStyle = '#c0392b';
+                ctx.lineWidth = 1;
+                
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                // Draw point index
+                ctx.fillStyle = 'white';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(index.toString(), screenX, screenY);
+            });
+        }
         
         ctx.restore();
     }
@@ -2508,6 +2566,26 @@ if (typeof module !== 'undefined' && module.exports) {
                 selector.value = currentIndex;
             }
         }
+    }
+    
+    debugInfo() {
+        let info = '🐛 Advanced Map Editor Debug Info\n\n';
+        info += `Islands loaded: ${this.islands.length}\n`;
+        info += `Selected island: ${this.selectedIsland ? this.selectedIsland.name : 'None'}\n`;
+        info += `Collision line mode: ${this.collisionLineMode}\n`;
+        info += `Show collision bounds: ${this.state.display.showCollisionBounds}\n\n`;
+        
+        this.islands.forEach((island, index) => {
+            info += `Island ${index + 1}: ${island.name}\n`;
+            info += `  Position: (${island.x}, ${island.y})\n`;
+            info += `  Size: ${island.width}x${island.height}\n`;
+            info += `  Radius: ${island.radius}\n`;
+            info += `  Image loaded: ${island.image && island.image.complete ? 'Yes' : 'No'}\n`;
+            info += `  Collision points: ${island.collision ? island.collision.length : 0}\n\n`;
+        });
+        
+        console.log(info);
+        alert(info);
     }
     
     // Enhanced selectIsland with UI updates
