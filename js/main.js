@@ -622,7 +622,7 @@ let game;
 // Start game after DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     game = new Game();
-    window.game = game; // Make globally accessible for collision editor
+    window.game = game; // Make globally accessible for debugging
     
     // Set development mode
     window.DEBUG_MODE = true; // Set to true to display debug info
