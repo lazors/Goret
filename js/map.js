@@ -1,6 +1,7 @@
 /**
  * Pirate Game - Map Module
  * Loading and rendering map with realistic animated waves
+ * Using Multi-Circle collision system
  */
 
 class GameMap {
@@ -28,13 +29,13 @@ class GameMap {
             bottom: this.height
         };
         
-        // Islands and obstacles - realistic irregular shapes
+        // Islands with Multi-Circle collision system
         this.islands = [];
         
         // Initialize islands with positions
         this.initializeIslands();
         
-        console.log('🗺️ Map initialized with enhanced wave system');
+        console.log('🗺️ Map initialized with Multi-Circle collision system');
     }
     
     initializeWaveLayers() {
@@ -74,800 +75,477 @@ class GameMap {
     }
     
     initializeIslands() {
-        // Single Saint Kitts island in the center of the massive ocean
-        this.islands = [
-            {
-                x: 2000, // Moved closer to middle from left corner
-                y: 1500,
-                radius: 600, // 5x bigger island (120 * 5 = 600)
-                name: 'Saint Kitts Island',
-                image: this.assets.island,
-                outline: null, // Will be populated with actual island outline
-                useManualOutline: true // Set to true to use manual points instead of PNG detection
-            }
-        ];
-        
-        // Generate outline data for collision detection
-        this.generateIslandOutlines();
-        
-        console.log('🏝️ Saint Kitts Island initialized with outline collision');
-    }
-    
-    generateIslandOutlines() {
-        this.islands.forEach(island => {
-            console.log('🏝️ Starting outline generation for', island.name);
-            console.log('📷 Island image available:', !!island.image);
-            console.log('🖼️ Image type:', island.image ? island.image.constructor.name : 'None');
-            
-            // Check if manual outline should be used
-            if (island.useManualOutline) {
-                island.outline = this.generateCustomOutline(island);
-                console.log('✅ Generated custom manual outline for', island.name, 'with', island.outline.points.length, 'points');
-            }
-            // Use image-based outline generation for accurate coastline collision
-            else if (island.image) {
-                try {
-                    island.outline = this.generateOutlineFromImage(island.image, island.radius);
-                    console.log('✅ Generated image-based outline for', island.name, 'with', island.outline.points.length, 'points');
-                } catch (error) {
-                    console.error('❌ Error generating image outline:', error);
-                    island.outline = this.generateManualOutline(island.radius);
-                    console.log('🔄 Fallback to manual outline for', island.name, 'with', island.outline.points.length, 'points');
+        // Load islands from map editor data if available, otherwise use defaults
+        if (typeof ISLANDS_DATA !== 'undefined' && Array.isArray(ISLANDS_DATA)) {
+            console.log('🏝️ Loading islands from map editor data...');
+            this.islands = this.convertMapEditorData(ISLANDS_DATA);
+        } else {
+            console.log('🏝️ Using default island data...');
+            // Fallback to default islands with Multi-Circle collision system
+            this.islands = [
+                {
+                    x: 2000,
+                    y: 1500,
+                    radius: 600,
+                    name: 'Saint Kitts Island',
+                    image: this.assets.island,
+                    collisionCircles: [
+                        { x: 0, y: 0, radius: 280 },
+                        { x: -160, y: -155, radius: 120 },
+                        { x: 140, y: 145, radius: 100 },
+                        { x: -50, y: 100, radius: 80 }
+                    ]
+                },
+                {
+                    x: 4500,
+                    y: 3000,
+                    radius: 400,
+                    name: 'Nevis Island',
+                    image: this.assets.island2 || this.assets.island,
+                    collisionCircles: [
+                        { x: 0, y: 0, radius: 180 },
+                        { x: -80, y: -60, radius: 80 },
+                        { x: 70, y: 50, radius: 60 }
+                    ]
                 }
-            } else {
-                // Fallback to manual outline if no image available
-                island.outline = this.generateManualOutline(island.radius);
-                console.log('🔄 Generated manual outline for', island.name, 'with', island.outline.points.length, 'points');
-            }
+            ];
+        }
+        
+        console.log('🏝️ Islands initialized with Multi-Circle collision system');
+        this.islands.forEach(island => {
+            console.log(`  - ${island.name}: ${island.collisionCircles ? island.collisionCircles.length : 0} collision circles`);
         });
     }
     
-    generateCustomOutline(island) {
-        // MANUAL COLLISION OUTLINE CONFIGURATION
-        // Saint Kitts Island - 17 collision points (manually created with collision editor)
-        
-        // Saint Kitts Island - 17 collision points
-        const saintKitsIslandPoints = [
-            { x: -555.2, y: -382.3 },
-            { x: -279.0, y: -582.4 },
-            { x: -108.1, y: -447.1 },
-            { x: 65.7, y: -273.0 },
-            { x: 161.8, y: -79.8 },
-            { x: 262.6, y: -4.5 },
-            { x: 321.7, y: 190.4 },
-            { x: 414.0, y: 270.2 },
-            { x: 496.8, y: 303.0 },
-            { x: 575.2, y: 358.5 },
-            { x: 473.2, y: 553.2 },
-            { x: 328.0, y: 562.5 },
-            { x: 321.7, y: 415.5 },
-            { x: 282.8, y: 293.8 },
-            { x: 17.2, y: 139.0 },
-            { x: -175.0, y: 72.1 },
-            { x: -387.6, y: -116.9 }
-        ];
-        
-        // Usage in generateCustomOutline():
-        return {
-            points: saintKitsIslandPoints,
-            bounds: this.calculateOutlineBounds(saintKitsIslandPoints)
-        };
-    }
-    
-    generateManualOutline(radius) {
-        // Create a manual outline that approximates an island shape
-        // This is more reliable than image analysis and works consistently
-        const points = [];
-        const segments = 64; // More points for smoother outline
-        
-        // Create an irregular island-like shape
-        for (let i = 0; i < segments; i++) {
-            const angle = (i / segments) * Math.PI * 2;
-            
-            // Add some variation to make it look more like an island
-            const variation = 0.8 + 0.2 * Math.sin(angle * 3) + 0.1 * Math.sin(angle * 7);
-            const r = radius * variation;
-            
-            points.push({
-                x: Math.cos(angle) * r,
-                y: Math.sin(angle) * r
-            });
-        }
-        
-        return {
-            points: points,
-            bounds: { minX: -radius, minY: -radius, maxX: radius, maxY: radius }
-        };
-    }
-    
-    generateOutlineFromImage(image, radius) {
-        try {
-            // Create a temporary canvas to analyze the image
-            const tempCanvas = document.createElement('canvas');
-            const tempCtx = tempCanvas.getContext('2d');
-            
-            // Use the actual radius * 2 for resolution to match the drawn island size
-            const resolution = radius * 2;
-            tempCanvas.width = resolution;
-            tempCanvas.height = resolution;
-            
-            // Draw the image exactly as it appears in the game
-            tempCtx.drawImage(image, 0, 0, resolution, resolution);
-            
-            // Try to get image data (may fail due to CORS)
-            let imageData;
-            try {
-                imageData = tempCtx.getImageData(0, 0, resolution, resolution);
-                console.log('✅ Successfully got image data for coastline analysis');
-            } catch (error) {
-                console.warn('⚠️ CORS blocked image analysis:', error.message);
-                console.log('🔄 Falling back to manual outline generation');
-                return this.generateManualOutline(radius);
+    convertMapEditorData(mapEditorIslands) {
+        // Convert map editor island format to game format
+        return mapEditorIslands.map(island => {
+            // Determine which image to use based on imageFilename
+            let islandImage = null;
+            if (island.imageFilename) {
+                // Try to find dynamically loaded image
+                const imageKey = `island_${island.imageFilename}`;
+                islandImage = this.assets[imageKey];
+                
+                // Fallback to old naming convention if not found
+                if (!islandImage) {
+                    if (island.imageFilename.includes('Nevis')) {
+                        islandImage = this.assets.island2 || this.assets.island;
+                    } else if (island.imageFilename.includes('Saint_Kitts')) {
+                        islandImage = this.assets.island;
+                    }
+                }
             }
             
-            const data = imageData.data;
-            const center = resolution / 2;
-            
-            // Use edge detection to find the actual coastline
-            const outlinePoints = this.detectCoastlineEdges(data, resolution, center);
-            
-            // If no outline points found, use fallback
-            if (outlinePoints.length === 0) {
-                console.warn('⚠️ No coastline points found, using fallback');
-                return this.generateManualOutline(radius);
+            // Final fallback to default island image
+            if (!islandImage) {
+                islandImage = this.assets.island || this.assets.island2;
             }
             
-            console.log('🏖️ Successfully extracted', outlinePoints.length, 'coastline points from island image');
+            // Calculate radius from collision circles if not provided
+            let radius = island.radius;
+            if (!radius && island.collisionCircles && island.collisionCircles.length > 0) {
+                // Find the maximum distance from center to edge of any collision circle
+                radius = 0;
+                island.collisionCircles.forEach(circle => {
+                    const distance = Math.sqrt(circle.x * circle.x + circle.y * circle.y) + circle.radius;
+                    radius = Math.max(radius, distance);
+                });
+            }
             
-            // Apply minimal smoothing to preserve the actual island shape
-            const smoothedPoints = this.smoothCoastline(outlinePoints, 0.05); // Very minimal smoothing
-            
-            console.log('🌊 Coastline smoothed to', smoothedPoints.length, 'points');
-            
-            return {
-                points: smoothedPoints,
-                bounds: this.calculateOutlineBounds(smoothedPoints)
+            const gameIsland = {
+                x: island.x,
+                y: island.y,
+                radius: radius || 400,
+                name: island.name,
+                image: islandImage,
+                collisionCircles: []
             };
             
-        } catch (error) {
-            console.warn('⚠️ Error generating coastline outline:', error);
-            return this.generateManualOutline(radius);
-        }
+            // Convert collision data to Multi-Circle format
+            if (island.collisionCircles && island.collisionCircles.length > 0) {
+                // Already in Multi-Circle format
+                gameIsland.collisionCircles = island.collisionCircles;
+            } else if (island.collision && island.collision.length > 0) {
+                // Convert old polygon format to Multi-Circle
+                console.log(`Converting polygon collision to Multi-Circle for ${island.name}...`);
+                gameIsland.collisionCircles = this.convertPolygonToCircles(island.collision, island);
+            } else {
+                // Create default single circle
+                gameIsland.collisionCircles = [{ x: 0, y: 0, radius: gameIsland.radius * 0.7 }];
+            }
+            
+            console.log(`🔄 Converted ${island.name}: ${gameIsland.collisionCircles.length} collision circles`);
+            return gameIsland;
+        });
     }
     
-    detectCoastlineEdges(data, resolution, center) {
-        const outlinePoints = [];
-        const visited = new Set();
+    convertPolygonToCircles(polygon, island) {
+        // Convert polygon points to Multi-Circle collision
+        // This is a simplified conversion - place circles to cover key areas
         
-        // Helper function to check if a pixel is land (not transparent)
-        const isLand = (x, y) => {
-            if (x < 0 || x >= resolution || y < 0 || y >= resolution) return false;
-            const index = (y * resolution + x) * 4;
-            return data[index + 3] > 50; // Alpha > 50 means it's land
-        };
-        
-        // Helper function to check if a pixel is on the coastline (land pixel with water neighbor)
-        const isCoastline = (x, y) => {
-            if (!isLand(x, y)) return false;
-            
-            // Check 8 neighboring pixels
-            const neighbors = [
-                [-1, -1], [-1, 0], [-1, 1],
-                [0, -1],           [0, 1],
-                [1, -1],  [1, 0],  [1, 1]
-            ];
-            
-            for (let [dx, dy] of neighbors) {
-                if (!isLand(x + dx, y + dy)) {
-                    return true; // Has at least one water neighbor
-                }
-            }
-            return false;
-        };
-        
-        // Scan the entire image to find coastline pixels
-        const coastlinePixels = [];
-        for (let y = 0; y < resolution; y++) {
-            for (let x = 0; x < resolution; x++) {
-                if (isCoastline(x, y)) {
-                    coastlinePixels.push({ x, y });
-                }
-            }
+        if (!polygon || polygon.length === 0) {
+            return [{ x: 0, y: 0, radius: island.radius * 0.7 }];
         }
         
-        if (coastlinePixels.length === 0) {
-            console.warn('⚠️ No coastline pixels found');
-            return [];
-        }
+        // Find polygon bounds relative to island center
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
         
-        console.log('🔍 Found', coastlinePixels.length, 'coastline pixels');
-        
-        // Sort coastline pixels by angle from center to create a proper outline
-        coastlinePixels.sort((a, b) => {
-            const angleA = Math.atan2(a.y - center, a.x - center);
-            const angleB = Math.atan2(b.y - center, b.x - center);
-            return angleA - angleB;
+        polygon.forEach(point => {
+            const relX = point.x - island.x;
+            const relY = point.y - island.y;
+            minX = Math.min(minX, relX);
+            maxX = Math.max(maxX, relX);
+            minY = Math.min(minY, relY);
+            maxY = Math.max(maxY, relY);
         });
         
-        // Convert to relative coordinates and thin out points for performance
-        const step = Math.max(1, Math.floor(coastlinePixels.length / 512)); // Max 512 points
-        for (let i = 0; i < coastlinePixels.length; i += step) {
-            const pixel = coastlinePixels[i];
-            outlinePoints.push({
-                x: pixel.x - center,
-                y: pixel.y - center
-            });
+        const width = maxX - minX;
+        const height = maxY - minY;
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        
+        // Generate 3-5 circles based on island shape
+        const circles = [];
+        
+        // Main central circle
+        const mainRadius = Math.min(width, height) * 0.3;
+        circles.push({ x: centerX, y: centerY, radius: mainRadius });
+        
+        // Add additional circles for wider areas
+        if (width > height * 1.5) {
+            // Wide island - add horizontal circles
+            circles.push({ x: minX + width * 0.25, y: centerY, radius: mainRadius * 0.8 });
+            circles.push({ x: maxX - width * 0.25, y: centerY, radius: mainRadius * 0.8 });
+        } else if (height > width * 1.5) {
+            // Tall island - add vertical circles
+            circles.push({ x: centerX, y: minY + height * 0.25, radius: mainRadius * 0.8 });
+            circles.push({ x: centerX, y: maxY - height * 0.25, radius: mainRadius * 0.8 });
+        } else {
+            // Roughly square - add corner circles
+            circles.push({ x: minX + width * 0.3, y: minY + height * 0.3, radius: mainRadius * 0.7 });
+            circles.push({ x: maxX - width * 0.3, y: maxY - height * 0.3, radius: mainRadius * 0.7 });
         }
         
-        return outlinePoints;
-    }
-    
-    generateCircularOutline(radius) {
-        // Generate a circular outline as fallback
-        const points = [];
-        const segments = 32; // Number of points around the circle
-        
-        for (let i = 0; i < segments; i++) {
-            const angle = (i / segments) * Math.PI * 2;
-            points.push({
-                x: Math.cos(angle) * radius,
-                y: Math.sin(angle) * radius
-            });
-        }
-        
-        return {
-            points: points,
-            bounds: { minX: -radius, minY: -radius, maxX: radius, maxY: radius }
-        };
-    }
-    
-    simplifyOutline(points, tolerance) {
-        if (points.length <= 2) return points;
-        
-        const simplified = [];
-        let lastPoint = points[0];
-        simplified.push(lastPoint);
-        
-        for (let i = 1; i < points.length; i++) {
-            const point = points[i];
-            const distance = Math.sqrt(
-                Math.pow(point.x - lastPoint.x, 2) + 
-                Math.pow(point.y - lastPoint.y, 2)
-            );
-            
-            if (distance > tolerance) {
-                simplified.push(point);
-                lastPoint = point;
-            }
-        }
-        
-        return simplified;
-    }
-    
-    smoothCoastline(points, smoothingFactor = 0.3) {
-        if (points.length < 3) return points;
-        
-        const smoothed = [];
-        // How much smoothing to apply (0 = no smoothing, 1 = max smoothing)
-        
-        // Apply simple moving average smoothing
-        for (let i = 0; i < points.length; i++) {
-            const prevIndex = (i - 1 + points.length) % points.length;
-            const nextIndex = (i + 1) % points.length;
-            
-            const current = points[i];
-            const prev = points[prevIndex];
-            const next = points[nextIndex];
-            
-            // Calculate smoothed position
-            const smoothedX = current.x * (1 - smoothingFactor) + 
-                            (prev.x + next.x) * smoothingFactor * 0.5;
-            const smoothedY = current.y * (1 - smoothingFactor) + 
-                            (prev.y + next.y) * smoothingFactor * 0.5;
-            
-            smoothed.push({
-                x: smoothedX,
-                y: smoothedY
-            });
-        }
-        
-        return smoothed;
-    }
-    
-    calculateOutlineBounds(points) {
-        let minX = Infinity, minY = Infinity;
-        let maxX = -Infinity, maxY = -Infinity;
-        
-        points.forEach(point => {
-            minX = Math.min(minX, point.x);
-            minY = Math.min(minY, point.y);
-            maxX = Math.max(maxX, point.x);
-            maxY = Math.max(maxY, point.y);
-        });
-        
-        return { minX, minY, maxX, maxY };
+        return circles;
     }
     
     update(deltaTime) {
-        // Update wave animation time (continuous, never resets)
-        this.waveTime += this.waveSpeed * deltaTime;
+        // Update wave animation time
+        this.waveTime += deltaTime * this.waveSpeed;
+    }
+    
+    render(ctx, deltaTime, cameraX, cameraY, zoom, ship) {
+        // Set ocean background
+        const gradient = ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+        gradient.addColorStop(0, '#0a4f7a');
+        gradient.addColorStop(0.5, '#0d5e8f');
+        gradient.addColorStop(1, '#0f6ba5');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Update each wave layer
-        this.waveLayers.forEach(layer => {
-            layer.currentTime = this.waveTime * layer.speed;
+        // Render animated wave layers
+        this.renderWaveLayers(ctx);
+        
+        // Render islands
+        this.renderIslands(ctx);
+    }
+    
+    // Special render method for map editor
+    renderOcean(ctx, offsetX, offsetY, viewWidth, viewHeight) {
+        // Set ocean background
+        const gradient = ctx.createLinearGradient(0, 0, 0, this.height);
+        gradient.addColorStop(0, '#0a4f7a');
+        gradient.addColorStop(0.5, '#0d5e8f');
+        gradient.addColorStop(1, '#0f6ba5');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, this.width, this.height);
+        
+        // Render animated wave layers
+        this.renderWaveLayers(ctx);
+    }
+    
+    // Method to update islands from map editor
+    updateIslands(newIslands) {
+        if (newIslands && Array.isArray(newIslands)) {
+            console.log('🔄 Updating islands from map editor...');
+            this.islands = this.convertMapEditorData(newIslands);
+            console.log(`✅ Updated ${this.islands.length} islands`);
+        }
+    }
+    
+    renderWaveLayers(ctx) {
+        // Calculate visible area for optimization
+        const visibleBounds = {
+            left: -100,
+            top: -100,
+            right: this.canvas.width / ctx.getTransform().a + 100,
+            bottom: this.canvas.height / ctx.getTransform().d + 100
+        };
+        
+        // Render each wave layer with realistic animation
+        this.waveLayers.forEach((layer, layerIndex) => {
+            ctx.strokeStyle = layer.color;
+            ctx.lineWidth = layer.thickness;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Calculate wave spacing based on frequency
+            const spacing = 1 / layer.frequency;
+            
+            // Render wave lines based on type
+            if (layer.type === 'swell') {
+                // Large ocean swells
+                this.renderSwells(ctx, layer, spacing, visibleBounds);
+            } else if (layer.type === 'wave') {
+                // Medium waves
+                this.renderWaves(ctx, layer, spacing, visibleBounds);
+            } else if (layer.type === 'ripple') {
+                // Small surface ripples
+                this.renderRipples(ctx, layer, spacing, visibleBounds);
+            }
         });
     }
     
-    draw(ctx) {
-        // Render base map
-        this.drawBaseMap(ctx);
+    renderSwells(ctx, layer, spacing, bounds) {
+        // Render large rolling ocean swells
+        const startX = Math.floor(bounds.left / spacing) * spacing;
+        const endX = Math.ceil(bounds.right / spacing) * spacing;
         
-        // Render realistic animated waves
-        this.drawRealisticWaves(ctx);
-        
-        // Render islands over waves
-        this.drawIslandsOverlay(ctx);
-    }
-    
-    drawBaseMap(ctx) {
-        // Draw main map background with single shade of blue
-        if (this.assets.map) {
-            ctx.drawImage(this.assets.map, 0, 0);
-        } else {
-            // Single shade ocean background
-            ctx.fillStyle = '#2980b9'; // Medium blue - single shade
-            ctx.fillRect(0, 0, this.width, this.height);
-        }
-    }
-    
-    drawRealisticWaves(ctx) {
-        // Draw each wave layer from largest to smallest
-        for (let i = this.waveLayers.length - 1; i >= 0; i--) {
-            this.drawWaveLayer(ctx, this.waveLayers[i]);
-        }
-    }
-    
-    drawWaveLayer(ctx, layer) {
-        const { amplitude, frequency, direction, color, thickness, currentTime, type } = layer;
-        
-        // Skip drawing for cleaner ocean surface
-        // Only keep subtle wave effects without visible lines
-        return;
-    }
-    
-    drawWaveCrests(ctx, amplitude, frequency, direction, time, type) {
-        // Draw multiple wave crests across the ocean
-        const crestSpacing = 80; // Distance between wave crests
-        const numCrests = Math.ceil(this.width / crestSpacing) + 4;
-        
-        for (let i = 0; i < numCrests; i++) {
-            const crestOffset = i * crestSpacing;
-            this.drawSingleWaveCrest(ctx, crestOffset, amplitude, frequency, direction, time, type);
-        }
-    }
-    
-    drawSingleWaveCrest(ctx, offset, amplitude, frequency, direction, time, type) {
-        ctx.beginPath();
-        
-        // Start and end points for the wave crest
-        const startX = -100;
-        const endX = this.width + 100;
-        const stepSize = 3;
-        
-        let firstPoint = true;
-        
-        for (let x = startX; x <= endX; x += stepSize) {
-            // Calculate wave position with realistic ocean physics
-            const wavePhase = frequency * (x * direction.x + offset * direction.y) + time;
+        for (let x = startX; x <= endX; x += spacing * 50) {
+            ctx.beginPath();
             
-            let y;
-            if (type === 'swell') {
-                // Large rolling ocean swells
-                y = Math.sin(wavePhase) * amplitude + 
-                    Math.sin(wavePhase * 0.7) * amplitude * 0.3;
-            } else if (type === 'wave') {
-                // Medium waves with more detail
-                y = Math.sin(wavePhase) * amplitude + 
-                    Math.sin(wavePhase * 1.3) * amplitude * 0.2 +
-                    Math.sin(wavePhase * 0.5) * amplitude * 0.1;
-            } else {
-                // Small ripples
-                y = Math.sin(wavePhase) * amplitude + 
-                    Math.sin(wavePhase * 2.1) * amplitude * 0.4;
-            }
-            
-            // Apply depth-based lighting (lighter near islands)
-            const depthLighting = this.getDepthLighting(x, y);
-            const adjustedY = y * depthLighting;
-            
-            // Add some vertical offset for wave positioning
-            const finalY = adjustedY + (offset * 0.3);
-            
-            if (firstPoint) {
-                ctx.moveTo(x, finalY);
-                firstPoint = false;
-            } else {
-                ctx.lineTo(x, finalY);
-            }
-        }
-        
-        ctx.stroke();
-    }
-    
-    getDepthLighting(x, y) {
-        // Return constant lighting - no depth effects
-        return 1.0;
-    }
-    
-    drawIslandsOverlay(ctx) {
-        // Simple island rendering with island images - no lighting effects
-        this.islands.forEach(island => {
-            // Draw island image
-            if (island.image) {
-                ctx.drawImage(
-                    island.image,
-                    island.x - island.radius,
-                    island.y - island.radius,
-                    island.radius * 2,
-                    island.radius * 2
-                );
-            } else {
-                // Fallback to shape drawing
-                ctx.fillStyle = '#8fbc8f';
-                this.drawIslandShape(ctx, island);
+            let firstPoint = true;
+            for (let y = bounds.top; y <= bounds.bottom; y += 20) {
+                // Calculate wave displacement
+                const waveX = x + Math.sin(y * layer.frequency + this.waveTime * layer.speed) * layer.amplitude;
+                const waveY = y + Math.cos(x * layer.frequency * 0.5 + this.waveTime * layer.speed * 0.7) * layer.amplitude * 0.5;
                 
-                ctx.fillStyle = '#a8d5a8';
-                this.drawIslandShape(ctx, island, -5, -5, 0.8);
+                if (firstPoint) {
+                    ctx.moveTo(waveX, waveY);
+                    firstPoint = false;
+                } else {
+                    ctx.lineTo(waveX, waveY);
+                }
             }
-        });
-    }
-    
-    drawIslandShape(ctx, island, offsetX = 0, offsetY = 0, scale = 1.0) {
-        if (island.points) {
-            // Draw irregular shape using points
-            ctx.beginPath();
-            const firstPoint = island.points[0];
-            ctx.moveTo(
-                island.x + offsetX + (firstPoint.x * scale), 
-                island.y + offsetY + (firstPoint.y * scale)
-            );
             
-            for (let i = 1; i < island.points.length; i++) {
-                const point = island.points[i];
-                ctx.lineTo(
-                    island.x + offsetX + (point.x * scale), 
-                    island.y + offsetY + (point.y * scale)
-                );
-            }
-            ctx.closePath();
-            ctx.fill();
-        } else {
-            // Fallback to circle for backward compatibility
-            ctx.beginPath();
-            ctx.arc(island.x + offsetX, island.y + offsetY, island.radius * scale, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.stroke();
         }
     }
     
-
+    renderWaves(ctx, layer, spacing, bounds) {
+        // Render medium wave patterns
+        const startY = Math.floor(bounds.top / spacing) * spacing;
+        const endY = Math.ceil(bounds.bottom / spacing) * spacing;
+        
+        for (let y = startY; y <= endY; y += spacing * 30) {
+            ctx.beginPath();
+            
+            let firstPoint = true;
+            for (let x = bounds.left; x <= bounds.right; x += 15) {
+                // Calculate wave displacement with directional movement
+                const waveX = x + Math.sin((x + y) * layer.frequency + this.waveTime * layer.speed * layer.direction.x) * layer.amplitude;
+                const waveY = y + Math.cos((x - y) * layer.frequency + this.waveTime * layer.speed * layer.direction.y) * layer.amplitude;
+                
+                if (firstPoint) {
+                    ctx.moveTo(waveX, waveY);
+                    firstPoint = false;
+                } else {
+                    ctx.lineTo(waveX, waveY);
+                }
+            }
+            
+            ctx.stroke();
+        }
+    }
     
-    drawRealisticIslandWakes(ctx, island) {
-        // Removed dashed wake rings - keeping only the depth transitions
-        // No more cursor-like lines around islands
-        return;
+    renderRipples(ctx, layer, spacing, bounds) {
+        // Render small surface ripples
+        const rippleSpacing = spacing * 20;
+        const startX = Math.floor(bounds.left / rippleSpacing) * rippleSpacing;
+        const endX = Math.ceil(bounds.right / rippleSpacing) * rippleSpacing;
+        const startY = Math.floor(bounds.top / rippleSpacing) * rippleSpacing;
+        const endY = Math.ceil(bounds.bottom / rippleSpacing) * rippleSpacing;
+        
+        ctx.globalAlpha = 0.3;
+        
+        for (let x = startX; x <= endX; x += rippleSpacing) {
+            for (let y = startY; y <= endY; y += rippleSpacing) {
+                // Calculate ripple center with wave-based movement
+                const rippleX = x + Math.sin(this.waveTime * layer.speed + x * 0.01) * layer.amplitude;
+                const rippleY = y + Math.cos(this.waveTime * layer.speed * 0.8 + y * 0.01) * layer.amplitude;
+                
+                // Draw small circular ripple
+                const rippleRadius = layer.amplitude + Math.sin(this.waveTime * layer.speed * 2) * 2;
+                
+                ctx.beginPath();
+                ctx.arc(rippleX, rippleY, rippleRadius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+        
+        ctx.globalAlpha = 1;
+    }
+    
+    renderIslands(ctx) {
+        // Render islands with their images
+        this.islands.forEach(island => {
+            if (island.image) {
+                ctx.save();
+                ctx.translate(island.x, island.y);
+                
+                // Draw island image centered
+                const size = island.radius * 2;
+                ctx.drawImage(island.image, -size/2, -size/2, size, size);
+                
+                ctx.restore();
+            } else {
+                // Fallback: Draw placeholder circle
+                ctx.fillStyle = 'rgba(139, 90, 43, 0.8)';
+                ctx.beginPath();
+                ctx.arc(island.x, island.y, island.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.strokeStyle = 'rgba(101, 67, 33, 0.9)';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+            
+            // Draw island name
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 3;
+            ctx.strokeText(island.name, island.x, island.y - island.radius - 30);
+            ctx.fillText(island.name, island.x, island.y - island.radius - 30);
+        });
     }
     
     // Methods for collisions and boundary checking
     checkBounds(x, y, radius = 32) {
         return {
-            left: x - radius >= this.bounds.left,
-            right: x + radius <= this.bounds.right,
-            top: y - radius >= this.bounds.top,
-            bottom: y + radius <= this.bounds.bottom
+            hitLeft: x - radius <= this.bounds.left,
+            hitRight: x + radius >= this.bounds.right,
+            hitTop: y - radius <= this.bounds.top,
+            hitBottom: y + radius >= this.bounds.bottom,
+            
+            // Push-back values to keep ship in bounds
+            pushX: x - radius < this.bounds.left ? this.bounds.left + radius - x : 
+                   x + radius > this.bounds.right ? this.bounds.right - radius - x : 0,
+            pushY: y - radius < this.bounds.top ? this.bounds.top + radius - y :
+                   y + radius > this.bounds.bottom ? this.bounds.bottom - radius - y : 0
         };
     }
     
-    isInBounds(x, y, radius = 32) {
-        return x - radius >= this.bounds.left && 
-               x + radius <= this.bounds.right && 
-               y - radius >= this.bounds.top && 
-               y + radius <= this.bounds.bottom;
-    }
-    
-    checkIslandCollision(x, y, radius = 32) {
-        for (let island of this.islands) {
-            // Quick bounding box check first
-            if (island.outline && island.outline.bounds) {
-                const bounds = island.outline.bounds;
-                const shipLeft = x - radius;
-                const shipRight = x + radius;
-                const shipTop = y - radius;
-                const shipBottom = y + radius;
-                
-                const islandLeft = island.x + bounds.minX;
-                const islandRight = island.x + bounds.maxX;
-                const islandTop = island.y + bounds.minY;
-                const islandBottom = island.y + bounds.maxY;
-                
-                // If no overlap in bounding boxes, no collision
-                if (shipRight < islandLeft || shipLeft > islandRight || 
-                    shipBottom < islandTop || shipTop > islandBottom) {
-                    continue;
-                }
-            }
-            
-            // Use outline-based collision detection
-            if (island.outline && island.outline.points) {
-                const collision = this.checkOutlineCollision(x, y, radius, island);
-                if (collision.collision) {
-                    return collision;
-                }
-            } else {
-                // Fallback to circular collision
-                const distance = Math.sqrt(
-                    Math.pow(x - island.x, 2) + Math.pow(y - island.y, 2)
-                );
-                
-                const collisionDistance = island.radius + radius;
-                
-                if (distance < collisionDistance) {
-                    return {
-                        collision: true,
-                        island: island,
-                        distance: distance,
-                        pushX: (x - island.x) / distance,
-                        pushY: (y - island.y) / distance
-                    };
-                }
-            }
-        }
-        
-        return { collision: false };
-    }
-    
-    checkOutlineCollision(shipX, shipY, shipRadius, island) {
-        // Convert ship position to island's local coordinate system
-        const localX = shipX - island.x;
-        const localY = shipY - island.y;
-        
-        // Find the closest point on the island outline to the ship
-        let closestDistance = Infinity;
-        let closestPoint = null;
-        
-        // Check if we have valid outline points
-        if (!island.outline || !island.outline.points || island.outline.points.length === 0) {
-            console.warn('⚠️ No valid outline points for collision detection');
-            return { collision: false };
-        }
-        
-        // Find closest point on outline
-        for (let i = 0; i < island.outline.points.length; i++) {
-            const point = island.outline.points[i];
-            const distance = Math.sqrt(
-                Math.pow(localX - point.x, 2) + Math.pow(localY - point.y, 2)
-            );
-            
-            if (distance < closestDistance) {
-                closestDistance = distance;
-                closestPoint = point;
-            }
-        }
-        
-        // Add a small buffer to make collision detection more responsive
-        const collisionBuffer = 10;
-        
-        // Check if ship is colliding with the outline
-        if (closestDistance < (shipRadius + collisionBuffer)) {
-            // Calculate push direction from closest point to ship
-            const pushX = (localX - closestPoint.x) / closestDistance;
-            const pushY = (localY - closestPoint.y) / closestDistance;
-            
-            // Debug logging in debug mode
-            if (window.DEBUG_MODE) {
-                console.log('🚢 Outline collision detected:', {
-                    shipPos: { x: shipX, y: shipY },
-                    closestPoint: { x: island.x + closestPoint.x, y: island.y + closestPoint.y },
-                    distance: closestDistance,
-                    shipRadius: shipRadius,
-                    collisionBuffer: collisionBuffer,
-                    pushDirection: { x: pushX, y: pushY }
-                });
-            }
-            
-            return {
-                collision: true,
-                island: island,
-                distance: closestDistance,
-                pushX: pushX,
-                pushY: pushY,
-                closestPoint: {
-                    x: island.x + closestPoint.x,
-                    y: island.y + closestPoint.y
-                }
-            };
-        }
-        
-        return { collision: false };
-    }
-    
-
-    
-    getDistanceToPolygon(x, y, island) {
-        // Calculate distance from point to irregular polygon
-        let minDistance = Infinity;
-        
-        for (let i = 0; i < island.points.length; i++) {
-            const currentPoint = island.points[i];
-            const nextPoint = island.points[(i + 1) % island.points.length];
-            
-            const px = island.x + currentPoint.x;
-            const py = island.y + currentPoint.y;
-            const nx = island.x + nextPoint.x;
-            const ny = island.y + nextPoint.y;
-            
-            // Distance to line segment
-            const distance = this.distanceToLineSegment(x, y, px, py, nx, ny);
-            minDistance = Math.min(minDistance, distance);
-        }
-        
-        return minDistance;
-    }
-    
-    distanceToLineSegment(px, py, x1, y1, x2, y2) {
-        const A = px - x1;
-        const B = py - y1;
-        const C = x2 - x1;
-        const D = y2 - y1;
-        
-        const dot = A * C + B * D;
-        const lenSq = C * C + D * D;
-        let param = -1;
-        
-        if (lenSq !== 0) param = dot / lenSq;
-        
-        let xx, yy;
-        
-        if (param < 0) {
-            xx = x1;
-            yy = y1;
-        } else if (param > 1) {
-            xx = x2;
-            yy = y2;
-        } else {
-            xx = x1 + param * C;
-            yy = y1 + param * D;
-        }
-        
-        const dx = px - xx;
-        const dy = py - yy;
-        return Math.sqrt(dx * dx + dy * dy);
-    }
-    
     getConstrainedPosition(x, y, radius = 32) {
-        // Constrain position within map bounds
-        const constrainedX = Math.max(radius, Math.min(this.width - radius, x));
-        const constrainedY = Math.max(radius, Math.min(this.height - radius, y));
+        // Constrain position to map boundaries
+        let constrainedX = x;
+        let constrainedY = y;
         
-        return { x: constrainedX, y: constrainedY };
+        // Check and constrain X coordinate
+        if (x - radius < this.bounds.left) {
+            constrainedX = this.bounds.left + radius;
+        } else if (x + radius > this.bounds.right) {
+            constrainedX = this.bounds.right - radius;
+        }
+        
+        // Check and constrain Y coordinate
+        if (y - radius < this.bounds.top) {
+            constrainedY = this.bounds.top + radius;
+        } else if (y + radius > this.bounds.bottom) {
+            constrainedY = this.bounds.bottom - radius;
+        }
+        
+        return {
+            x: constrainedX,
+            y: constrainedY
+        };
     }
     
-    // Method for getting water depth (for future mechanics)
-    getWaterDepth(x, y) {
-        // Simple depth calculation based on distance from islands
-        let minDistance = Infinity;
-        
-        this.islands.forEach(island => {
-            const distance = Math.sqrt(
-                Math.pow(x - island.x, 2) + Math.pow(y - island.y, 2)
-            );
-            minDistance = Math.min(minDistance, distance - island.radius);
-        });
-        
-        // Normalized depth from 0 to 1 - increased range for bigger map
-        return Math.max(0, Math.min(1, minDistance / 500));
+    // Multi-Circle collision check (simplified)
+    checkIslandCollision(x, y, radius = 32) {
+        // This is now handled by CollisionManager with Multi-Circle system
+        // Keeping this method for compatibility
+        return { collision: false };
     }
     
-    // Get current wind (for future mechanics)
-    getWindAt(x, y) {
-        const time = this.waveTime * 0.5;
-        const windX = Math.sin(time + x * 0.01) * 0.5;
-        const windY = Math.cos(time + y * 0.01) * 0.3;
+    // Debug method to display collision circles
+    renderDebugInfo(ctx) {
+        // Set up debug rendering
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
         
-        return { x: windX, y: windY };
-    }
-    
-    // Debug rendering
-    drawDebugInfo(ctx) {
-        // Display map boundaries
-        ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
-        ctx.lineWidth = 2;
+        // Draw world bounds
         ctx.strokeRect(this.bounds.left, this.bounds.top, 
-                       this.bounds.right - this.bounds.left, 
+                       this.bounds.right - this.bounds.left,
                        this.bounds.bottom - this.bounds.top);
         
-        // Display islands with actual outline collision boundaries
+        // Display Multi-Circle collision boundaries
         this.islands.forEach(island => {
-            if (island.outline && island.outline.points) {
-                // Draw actual island outline (red line)
-                ctx.strokeStyle = 'rgba(255, 0, 0, 0.9)';
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                
-                const firstPoint = island.outline.points[0];
-                ctx.moveTo(island.x + firstPoint.x, island.y + firstPoint.y);
-                
-                for (let i = 1; i < island.outline.points.length; i++) {
-                    const point = island.outline.points[i];
-                    ctx.lineTo(island.x + point.x, island.y + point.y);
-                }
-                
-                // Close the outline
-                ctx.lineTo(island.x + firstPoint.x, island.y + firstPoint.y);
-                ctx.stroke();
-                
-                // Draw outline points (small dots)
-                ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
-                island.outline.points.forEach(point => {
+            if (island.collisionCircles && island.collisionCircles.length > 0) {
+                // Draw each collision circle
+                island.collisionCircles.forEach((circle, index) => {
+                    const worldX = island.x + circle.x;
+                    const worldY = island.y + circle.y;
+                    
+                    // Draw circle outline (different colors for each)
+                    const colors = ['rgba(255, 0, 0, 0.6)', 'rgba(0, 255, 0, 0.6)', 
+                                    'rgba(0, 0, 255, 0.6)', 'rgba(255, 255, 0, 0.6)',
+                                    'rgba(255, 0, 255, 0.6)'];
+                    ctx.strokeStyle = colors[index % colors.length];
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([]);
                     ctx.beginPath();
-                    ctx.arc(island.x + point.x, island.y + point.y, 2, 0, Math.PI * 2);
+                    ctx.arc(worldX, worldY, circle.radius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    
+                    // Draw circle center
+                    ctx.fillStyle = colors[index % colors.length];
+                    ctx.beginPath();
+                    ctx.arc(worldX, worldY, 4, 0, Math.PI * 2);
                     ctx.fill();
+                    
+                    // Draw circle label
+                    ctx.fillStyle = 'white';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`C${index} (r:${circle.radius})`, worldX, worldY - circle.radius - 5);
                 });
-                
-                // Draw collision buffer zone (yellow dashed line)
-                ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
+            } else {
+                // Fallback: Draw single circle
+                ctx.strokeStyle = 'rgba(255, 100, 100, 0.5)';
                 ctx.lineWidth = 2;
                 ctx.setLineDash([5, 5]);
-                ctx.beginPath();
-                
-                island.outline.points.forEach((point, index) => {
-                    const x = island.x + point.x;
-                    const y = island.y + point.y;
-                    
-                    if (index === 0) {
-                        ctx.moveTo(x, y);
-                    } else {
-                        ctx.lineTo(x, y);
-                    }
-                });
-                
-                // Close the buffer zone
-                const firstPointBuffer = island.outline.points[0];
-                ctx.lineTo(island.x + firstPointBuffer.x, island.y + firstPointBuffer.y);
-                ctx.stroke();
-                ctx.setLineDash([]); // Reset line dash
-                
-            } else {
-                // Fallback to circular boundary
-                ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
-                ctx.lineWidth = 3;
                 ctx.beginPath();
                 ctx.arc(island.x, island.y, island.radius, 0, Math.PI * 2);
                 ctx.stroke();
             }
             
-            // Island labels
+            // Draw island info
             ctx.fillStyle = 'white';
             ctx.font = '12px monospace';
-            ctx.fillText(`Outline Points: ${island.outline ? island.outline.points.length : 'N/A'}`, 
-                        island.x - 40, island.y - island.radius - 10);
-            
-            // Show collision type
-            if (island.outline && island.outline.points && island.outline.points.length > 0) {
-                ctx.fillText(`Collision: Outline`, island.x - 30, island.y - island.radius - 25);
-            } else {
-                ctx.fillText(`Collision: Circular`, island.x - 30, island.y - island.radius - 25);
-            }
+            ctx.textAlign = 'center';
+            ctx.fillText(`Circles: ${island.collisionCircles ? island.collisionCircles.length : 1}`, 
+                        island.x, island.y + island.radius + 20);
         });
         
-        // Display wave info
-        ctx.fillStyle = 'white';
-        ctx.font = '12px monospace';
-        ctx.fillText(`Wave Time: ${this.waveTime.toFixed(2)}`, 10, 20);
+        // Reset line dash
+        ctx.setLineDash([]);
+        
+        // Display map info
+        ctx.fillStyle = 'yellow';
+        ctx.font = '14px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`World: ${this.width} x ${this.height}`, 10, 20);
         ctx.fillText(`Wave Layers: ${this.waveLayers.length}`, 10, 35);
         
         // Display collision system info
-        ctx.fillText(`Collision System: ${this.islands[0].outline && this.islands[0].outline.points ? 'Outline' : 'Circular'}`, 10, 50);
-        ctx.fillText(`Outline Points: ${this.islands[0].outline ? this.islands[0].outline.points.length : 'N/A'}`, 10, 65);
-        ctx.fillText(`Collision Buffer: 10px`, 10, 80);
+        ctx.fillText(`Collision System: Multi-Circle`, 10, 50);
+        ctx.fillText(`Total Islands: ${this.islands.length}`, 10, 65);
+        ctx.fillText(`Collision Circles: ${this.islands.reduce((sum, i) => sum + (i.collisionCircles?.length || 1), 0)}`, 10, 80);
     }
-} 
+}

@@ -25,7 +25,6 @@ class Game {
         this.map = null;
         this.ship = null;
         this.collisionManager = null;
-        this.collisionEditor = null;
         this.portManager = null;
         
         // Game state
@@ -37,7 +36,7 @@ class Game {
         
         // Zoom system
         this.zoom = 1.0;
-        this.minZoom = 0.3;
+        this.minZoom = 0.0;
         this.maxZoom = 3.0;
         this.zoomSpeed = 0.1;
         this.targetZoom = 1.0;
@@ -50,8 +49,8 @@ class Game {
         // Time and FPS
         this.lastTime = 0;
         this.deltaTime = 0;
-        this.fps = 0;
         this.frameCount = 0;
+        this.currentFPS = 0;
         this.fpsUpdateTime = 0;
         
         // UI elements
@@ -151,8 +150,8 @@ class Game {
                 this.togglePause();
             }
             
-            // Debug mode toggle on F12
-            if (e.code === 'F12') {
+            // Debug mode toggle on F12 or F10
+            if (e.code === 'F12' || e.code === 'F10') {
                 e.preventDefault();
                 window.DEBUG_MODE = !window.DEBUG_MODE;
                 console.log('🔧 Debug mode:', window.DEBUG_MODE ? 'ON' : 'OFF');
@@ -197,6 +196,21 @@ class Game {
         window.addEventListener('resize', () => {
             this.handleResize();
         });
+        
+        // Listen for island updates from map editor
+        window.addEventListener('message', (e) => {
+            if (e.data && e.data.type === 'islands-updated') {
+                console.log('🔄 Received island update from map editor');
+                if (this.map && e.data.islands) {
+                    this.map.updateIslands(e.data.islands);
+                    // Update collision manager with new islands
+                    if (this.collisionManager) {
+                        this.collisionManager.islands = this.map.islands;
+                        console.log('✅ Islands updated in game!');
+                    }
+                }
+            }
+        });
     }
     
     async loadAssets() {
@@ -206,9 +220,35 @@ class Game {
         const assetList = [
             { key: 'map', type: 'placeholder', width: 10240, height: 7680, color: '#1e3a5f' },
             { key: 'ship', type: 'image', src: 'assets/Ships/ship-4741839_960_720.webp' },
-            { key: 'island', type: 'image', src: 'assets/Islands/Saint_Kitts.png' },
             { key: 'wave', type: 'placeholder', width: 128, height: 128, color: '#2980b9' }
         ];
+        
+        // Dynamically add island images from ISLANDS_DATA
+        const islandImages = new Set();
+        if (typeof ISLANDS_DATA !== 'undefined' && Array.isArray(ISLANDS_DATA)) {
+            ISLANDS_DATA.forEach(island => {
+                if (island.imageFilename) {
+                    islandImages.add(island.imageFilename);
+                }
+            });
+        }
+        
+        // Add unique island images to asset list
+        let islandIndex = 0;
+        islandImages.forEach(filename => {
+            assetList.push({
+                key: `island_${filename}`,
+                type: 'image',
+                src: `assets/Islands/${filename}`
+            });
+            islandIndex++;
+        });
+        
+        // Fallback island images if no islands data
+        if (islandImages.size === 0) {
+            assetList.push({ key: 'island', type: 'image', src: 'assets/Islands/Saint_Kitts.png' });
+            assetList.push({ key: 'island2', type: 'image', src: 'assets/Islands/Nevis.png' });
+        }
         
         this.totalAssets = assetList.length;
         
@@ -342,8 +382,46 @@ class Game {
         // Initialize port manager
         this.portManager = new PortManager(this);
         
-        // Initialize collision editor for debug mode
-        this.collisionEditor = new CollisionEditor(this);
+        // Make game instance globally accessible for map editor integration
+        window.game = this;
+    }
+    
+    // Method to reload islands from updated islands-data.js
+    async reloadIslands() {
+        try {
+            // Dynamically reload the islands-data.js file
+            const timestamp = new Date().getTime();
+            const script = document.createElement('script');
+            script.src = `js/islands-data.js?t=${timestamp}`;
+            
+            return new Promise((resolve, reject) => {
+                script.onload = () => {
+                    console.log('🔄 Reloaded islands-data.js');
+                    if (window.ISLANDS_DATA) {
+                        this.map.updateIslands(window.ISLANDS_DATA);
+                        // Update collision manager with new islands
+                        if (this.collisionManager) {
+                            this.collisionManager.islands = this.map.islands;
+                        }
+                        console.log('✅ Islands updated from file!');
+                        resolve();
+                    } else {
+                        reject(new Error('ISLANDS_DATA not found after reload'));
+                    }
+                };
+                script.onerror = reject;
+                document.head.appendChild(script);
+                
+                // Clean up old script tag
+                setTimeout(() => {
+                    if (script.parentNode) {
+                        script.parentNode.removeChild(script);
+                    }
+                }, 1000);
+            });
+        } catch (error) {
+            console.error('❌ Failed to reload islands:', error);
+        }
     }
     
     gameLoop(currentTime = 0) {
@@ -440,7 +518,7 @@ class Game {
         
         // Render map
         if (this.map) {
-            this.map.draw(this.ctx);
+            this.map.render(this.ctx, this.deltaTime, this.cameraX, this.cameraY, this.zoom, this.ship);
         }
         
         // Render ship
@@ -458,10 +536,6 @@ class Game {
             this.collisionManager.drawDebugInfo(this.ctx);
         }
         
-        // Render collision editor overlay
-        if (this.collisionEditor && this.collisionEditor.isActive) {
-            this.collisionEditor.drawEditorOverlay(this.ctx);
-        }
         
         this.ctx.restore();
     }
@@ -490,40 +564,57 @@ class Game {
         this.frameCount++;
         
         if (currentTime - this.fpsUpdateTime >= 1000) {
-            this.fps = this.frameCount;
+            this.currentFPS = this.frameCount;
             this.frameCount = 0;
             this.fpsUpdateTime = currentTime;
         }
     }
     
     drawDebugInfo() {
-        // Draw FPS
-        this.ctx.fillStyle = 'white';
-        this.ctx.font = '16px monospace';
-        this.ctx.fillText(`FPS: ${this.fps}`, 10, 30);
+        // Save current context
+        this.ctx.save();
         
-        // Draw ship debug info
+        // Set debug text style
+        this.ctx.fillStyle = 'yellow';
+        this.ctx.font = '14px monospace';
+        this.ctx.textAlign = 'left';
+        this.ctx.strokeStyle = 'black';
+        this.ctx.lineWidth = 3;
+        
+        // Background for better readability
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        this.ctx.fillRect(10, 10, 250, 150);
+        
+        // Debug text
+        this.ctx.fillStyle = 'yellow';
+        let y = 30;
+        const lineHeight = 16;
+        
+        this.ctx.fillText(`FPS: ${this.currentFPS}`, 20, y);
+        y += lineHeight;
+        
         if (this.ship) {
-            this.ship.drawDebugInfo(this.ctx);
+            this.ctx.fillText(`Ship X: ${Math.round(this.ship.x)}`, 20, y);
+            y += lineHeight;
+            this.ctx.fillText(`Ship Y: ${Math.round(this.ship.y)}`, 20, y);
+            y += lineHeight;
+            this.ctx.fillText(`Speed: ${Math.round(this.ship.speed)}`, 20, y);
+            y += lineHeight;
+            this.ctx.fillText(`Angle: ${Math.round(this.ship.angle * 180 / Math.PI)}°`, 20, y);
+            y += lineHeight;
         }
         
-        // Draw map debug info
-        if (this.map) {
-            this.map.drawDebugInfo(this.ctx);
+        this.ctx.fillText(`Zoom: ${(this.zoom * 100).toFixed(0)}%`, 20, y);
+        y += lineHeight;
+        this.ctx.fillText(`Camera: ${Math.round(this.cameraX)}, ${Math.round(this.cameraY)}`, 20, y);
+        y += lineHeight;
+        
+        // Map debug info
+        if (this.map && this.map.renderDebugInfo) {
+            this.map.renderDebugInfo(this.ctx);
         }
         
-        // Draw camera and zoom info
-        this.ctx.fillText(`Camera: (${this.cameraX.toFixed(1)}, ${this.cameraY.toFixed(1)})`, 10, 60);
-        this.ctx.fillText(`Zoom: ${(this.zoom * 100).toFixed(1)}%`, 10, 75);
-        this.ctx.fillText(`Canvas: ${this.canvas.width}x${this.canvas.height}`, 10, 90);
-        
-        // Draw key states
-        let keyInfo = 'Keys: ';
-        if (this.keys['ArrowUp'] || this.keys['KeyW']) keyInfo += 'W ';
-        if (this.keys['ArrowDown'] || this.keys['KeyS']) keyInfo += 'S ';
-        if (this.keys['ArrowLeft'] || this.keys['KeyA']) keyInfo += 'A ';
-        if (this.keys['ArrowRight'] || this.keys['KeyD']) keyInfo += 'D ';
-        this.ctx.fillText(keyInfo, 10, 105);
+        this.ctx.restore();
     }
     
     togglePause() {
@@ -630,7 +721,7 @@ let game;
 // Start game after DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     game = new Game();
-    window.game = game; // Make globally accessible for collision editor
+    window.game = game; // Make globally accessible for debugging
     
     // Set development mode
     window.DEBUG_MODE = true; // Set to true to display debug info
