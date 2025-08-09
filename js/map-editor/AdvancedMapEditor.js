@@ -400,7 +400,7 @@ class PerformanceMonitor {
 class AdvancedMapEditor {
     constructor() {
         // Version and metadata
-        this.version = '2.0.0-advanced';
+        this.version = '2.0.1-grid-fixed';
         this.buildDate = new Date().toISOString();
         
         // Initialize systems
@@ -766,14 +766,14 @@ class AdvancedMapEditor {
             this.staticDirty = false;
         }
         
-        // Clear main canvas
-        this.ctx.fillStyle = '#0a1a2a';
+        // Clear main canvas with ocean background color
+        this.ctx.fillStyle = '#1e3a5f'; // Ocean background
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Draw static layer
+        // Draw static layer FIRST (background)
         this.ctx.drawImage(this.staticCanvas, 0, 0);
         
-        // Draw dynamic elements with viewport culling
+        // Draw dynamic elements AFTER static (so grid appears on top)
         this.renderDynamicLayer();
         
         // Render UI layer if needed
@@ -978,14 +978,9 @@ class AdvancedMapEditor {
         // Clear static canvas
         ctx.clearRect(0, 0, this.staticCanvas.width, this.staticCanvas.height);
         
-        // Draw ocean background
-        ctx.fillStyle = '#1e3a5f';
-        ctx.fillRect(0, 0, this.staticCanvas.width, this.staticCanvas.height);
+        // Ocean background moved to main canvas clearing - static layer is now transparent for grid to show through
         
-        // Draw world grid if enabled
-        if (this.showGrid) {
-            this.drawGrid(ctx, zoom, offsetX, offsetY);
-        }
+        // Grid will be drawn in the dynamic layer instead
         
         // Draw world boundaries
         if (this.showBounds) {
@@ -997,6 +992,15 @@ class AdvancedMapEditor {
         const zoom = this.state.viewport.zoom;
         const offsetX = this.state.viewport.offsetX;
         const offsetY = this.state.viewport.offsetY;
+        
+        // Draw world grid if enabled (on dynamic layer with proper transforms)
+        if (this.showGrid) {
+            this.ctx.save();
+            this.ctx.translate(-offsetX, -offsetY);
+            this.ctx.scale(zoom, zoom);
+            this.drawGrid(this.ctx, zoom, 0, 0);
+            this.ctx.restore();
+        }
         
         // Draw islands with viewport culling
         for (const island of this.islands) {
@@ -2222,7 +2226,7 @@ class AdvancedMapEditor {
     
     toggleGrid() {
         this.showGrid = !this.showGrid;
-        this.markDirty('static');
+        this.markDirty('all'); // Mark all dirty since grid is now on dynamic layer
         this.debugFramework.log(`Grid: ${this.showGrid ? 'shown' : 'hidden'}`, 'debug');
     }
     
@@ -2554,23 +2558,88 @@ KEYBOARD SHORTCUTS:
     
     // Additional helper methods for rendering
     drawGrid(ctx, zoom, offsetX, offsetY) {
-        const gridSize = this.worldConfig.gridSize * zoom;
-        const startX = (-offsetX % gridSize) - gridSize;
-        const startY = (-offsetY % gridSize) - gridSize;
+        // Grid is now drawn in world coordinates (since transform is applied)
+        const gridSize = this.worldConfig.gridSize;
         
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.lineWidth = 1;
+        // DEBUG: Log grid drawing (reduced frequency)
+        if (Math.random() < 0.01) { // Only log 1% of the time to reduce spam
+            console.log('Drawing grid with size:', gridSize, 'zoom:', zoom);
+        }
+        
+        // Skip grid if too zoomed out (grid would be too dense)
+        if (gridSize * zoom < 5) return;
+        
+        // Calculate grid bounds in world coordinates
+        const worldWidth = this.worldConfig.width;
+        const worldHeight = this.worldConfig.height;
+        
+        // Start from world origin and draw across entire world
+        const startX = 0;
+        const startY = 0;
+        const endX = worldWidth;
+        const endY = worldHeight;
+        
+        // Much more visible grid with higher opacity
+        let opacity = 0.6;
+        let lineWidth = 1 / zoom; // Scale line width inversely with zoom for consistent appearance
+        
+        if (zoom > 2) {
+            opacity = 0.8;
+            lineWidth = 0.5 / zoom;
+        } else if (zoom > 1) {
+            opacity = 0.7;
+            lineWidth = 0.8 / zoom;
+        } else if (zoom > 0.5) {
+            opacity = 0.6;
+            lineWidth = 1 / zoom;
+        } else {
+            opacity = 0.5;
+            lineWidth = 1.5 / zoom;
+        }
+        
+        ctx.strokeStyle = `rgba(0, 255, 255, ${opacity})`;
+        ctx.lineWidth = lineWidth;
         
         ctx.beginPath();
-        for (let x = startX; x < ctx.canvas.width + gridSize; x += gridSize) {
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, ctx.canvas.height);
+        
+        // Draw vertical lines across the world
+        for (let x = startX; x <= endX; x += gridSize) {
+            ctx.moveTo(x, startY);
+            ctx.lineTo(x, endY);
         }
-        for (let y = startY; y < ctx.canvas.height + gridSize; y += gridSize) {
-            ctx.moveTo(0, y);
-            ctx.lineTo(ctx.canvas.width, y);
+        
+        // Draw horizontal lines across the world
+        for (let y = startY; y <= endY; y += gridSize) {
+            ctx.moveTo(startX, y);
+            ctx.lineTo(endX, y);
         }
+        
         ctx.stroke();
+        
+        // Grid drawing complete - debug line removed
+        
+        // Draw major grid lines every 5 grid units for better reference
+        if (gridSize * zoom > 20) {
+            const majorGridSize = gridSize * 5;
+            
+            ctx.strokeStyle = `rgba(255, 255, 0, ${Math.min(opacity + 0.3, 1.0)})`;
+            ctx.lineWidth = lineWidth * 2; // Make major lines twice as thick
+            ctx.beginPath();
+            
+            // Major vertical lines
+            for (let x = startX; x <= endX; x += majorGridSize) {
+                ctx.moveTo(x, startY);
+                ctx.lineTo(x, endY);
+            }
+            
+            // Major horizontal lines
+            for (let y = startY; y <= endY; y += majorGridSize) {
+                ctx.moveTo(startX, y);
+                ctx.lineTo(endX, y);
+            }
+            
+            ctx.stroke();
+        }
     }
     
     drawWorldBounds(ctx, zoom, offsetX, offsetY) {
