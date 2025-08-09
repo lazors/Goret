@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "server": "node server.js",
     "dev": "concurrently \"npm run server\" \"npx http-server -p 8000 --cors\"",
-    "start": "npx http-server -p 8000 --cors"
+    "start": "npx http-server -p 8000 --cors",
+    "stop": "taskkill /F /IM node.exe & taskkill /F /IM http-server.exe"
   },
   "keywords": [],
   "author": "",

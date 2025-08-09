@@ -49,8 +49,8 @@ class Game {
         // Time and FPS
         this.lastTime = 0;
         this.deltaTime = 0;
-        this.fps = 0;
         this.frameCount = 0;
+        this.currentFPS = 0;
         this.fpsUpdateTime = 0;
         
         // UI elements
@@ -150,8 +150,8 @@ class Game {
                 this.togglePause();
             }
             
-            // Debug mode toggle on F12
-            if (e.code === 'F12') {
+            // Debug mode toggle on F12 or F10
+            if (e.code === 'F12' || e.code === 'F10') {
                 e.preventDefault();
                 window.DEBUG_MODE = !window.DEBUG_MODE;
                 console.log('🔧 Debug mode:', window.DEBUG_MODE ? 'ON' : 'OFF');
@@ -436,7 +436,7 @@ class Game {
         
         // Render map
         if (this.map) {
-            this.map.draw(this.ctx);
+            this.map.render(this.ctx, this.deltaTime, this.cameraX, this.cameraY, this.zoom, this.ship);
         }
         
         // Render ship
@@ -482,40 +482,57 @@ class Game {
         this.frameCount++;
         
         if (currentTime - this.fpsUpdateTime >= 1000) {
-            this.fps = this.frameCount;
+            this.currentFPS = this.frameCount;
             this.frameCount = 0;
             this.fpsUpdateTime = currentTime;
         }
     }
     
     drawDebugInfo() {
-        // Draw FPS
-        this.ctx.fillStyle = 'white';
-        this.ctx.font = '16px monospace';
-        this.ctx.fillText(`FPS: ${this.fps}`, 10, 30);
+        // Save current context
+        this.ctx.save();
         
-        // Draw ship debug info
+        // Set debug text style
+        this.ctx.fillStyle = 'yellow';
+        this.ctx.font = '14px monospace';
+        this.ctx.textAlign = 'left';
+        this.ctx.strokeStyle = 'black';
+        this.ctx.lineWidth = 3;
+        
+        // Background for better readability
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        this.ctx.fillRect(10, 10, 250, 150);
+        
+        // Debug text
+        this.ctx.fillStyle = 'yellow';
+        let y = 30;
+        const lineHeight = 16;
+        
+        this.ctx.fillText(`FPS: ${this.currentFPS}`, 20, y);
+        y += lineHeight;
+        
         if (this.ship) {
-            this.ship.drawDebugInfo(this.ctx);
+            this.ctx.fillText(`Ship X: ${Math.round(this.ship.x)}`, 20, y);
+            y += lineHeight;
+            this.ctx.fillText(`Ship Y: ${Math.round(this.ship.y)}`, 20, y);
+            y += lineHeight;
+            this.ctx.fillText(`Speed: ${Math.round(this.ship.speed)}`, 20, y);
+            y += lineHeight;
+            this.ctx.fillText(`Angle: ${Math.round(this.ship.angle * 180 / Math.PI)}°`, 20, y);
+            y += lineHeight;
         }
         
-        // Draw map debug info
-        if (this.map) {
-            this.map.drawDebugInfo(this.ctx);
+        this.ctx.fillText(`Zoom: ${(this.zoom * 100).toFixed(0)}%`, 20, y);
+        y += lineHeight;
+        this.ctx.fillText(`Camera: ${Math.round(this.cameraX)}, ${Math.round(this.cameraY)}`, 20, y);
+        y += lineHeight;
+        
+        // Map debug info
+        if (this.map && this.map.renderDebugInfo) {
+            this.map.renderDebugInfo(this.ctx);
         }
         
-        // Draw camera and zoom info
-        this.ctx.fillText(`Camera: (${this.cameraX.toFixed(1)}, ${this.cameraY.toFixed(1)})`, 10, 60);
-        this.ctx.fillText(`Zoom: ${(this.zoom * 100).toFixed(1)}%`, 10, 75);
-        this.ctx.fillText(`Canvas: ${this.canvas.width}x${this.canvas.height}`, 10, 90);
-        
-        // Draw key states
-        let keyInfo = 'Keys: ';
-        if (this.keys['ArrowUp'] || this.keys['KeyW']) keyInfo += 'W ';
-        if (this.keys['ArrowDown'] || this.keys['KeyS']) keyInfo += 'S ';
-        if (this.keys['ArrowLeft'] || this.keys['KeyA']) keyInfo += 'A ';
-        if (this.keys['ArrowRight'] || this.keys['KeyD']) keyInfo += 'D ';
-        this.ctx.fillText(keyInfo, 10, 105);
+        this.ctx.restore();
     }
     
     togglePause() {

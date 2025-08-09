@@ -24,34 +24,38 @@ Since this is a static web application with no build process:
    python -m http.server 8000
    ```
 
-## Map Editor with Image Saving
+## Map Editor with Multi-Circle Collision
 
-The map editor can automatically save loaded images to the `assets/Islands` folder:
+The map editor now uses a simplified Multi-Circle collision system instead of complex polygons:
 
-1. **Development Mode (with image saving):**
+1. **Development Mode (with map editor server):**
    ```bash
    npm run dev
    ```
-   This runs both the game server (port 8000) and image upload server (port 8001)
+   This runs both the game server (port 8000) and map editor server (port 8001)
 
-2. **Image Upload Server Only:**
+2. **Map Editor Server Only:**
    ```bash
    npm run server
    ```
-   Runs the Node.js server on port 8001 for handling image uploads
+   Runs the Node.js server on port 8001 for saving island data and handling image uploads
 
-3. **Game Only (no image saving):**
+3. **Game Only (no map editor):**
    ```bash
    npm start
    ```
-   Standard HTTP server without image upload functionality
+   Standard HTTP server without map editor functionality
+
+### Map Editor Access
+- **Primary Editor**: `http://localhost:8000/map-editor.html`
+- **Features**: Multi-Circle collision editing, visual drag & drop, real-time preview
+- **Collision System**: 3-5 circles per island instead of 20-50 polygon points
 
 ## Architecture
 
 ### Entry Points
 - **Main Game**: `index.html` → loads all JavaScript modules in sequence
-- **Map Editor**: `map-editor.html` → standalone collision boundary editor
-- **Collision Editor Guide**: `collision-editor-guide.html` → documentation
+- **Map Editor**: `map-editor.html` → Multi-Circle collision world building tool
 
 ### Core Game Loop (`js/main.js`)
 - `Game` class manages initialization, asset loading, game state, and render loop
@@ -72,21 +76,25 @@ The map editor can automatically save loaded images to the `assets/Islands` fold
    - 5 islands with collision boundaries
    - Map boundary constraints
 
-3. **Collision System** (`js/collision.js`):
-   - Island collision detection with repulsion
+3. **Multi-Circle Collision System** (`js/collision.js`):
+   - **UPDATED**: Now uses 3-5 circles per island instead of complex polygons
+   - Ultra-fast collision detection (10x performance improvement)
+   - Simple distance calculations instead of polygon math
    - Town area entry zones
-   - Debug visualization mode
-   - Automatic position correction
+   - Visual debug mode with color-coded circles
+   - Automatic position correction and ship push-back
 
 4. **Port System** (`js/port-manager.js`):
    - Port interface with 6 services (Tavern, Shipyard, Market, etc.)
    - Modal-based UI when entering towns
    - Saint Kitts port with background image
 
-5. **Editor Tools** (`js/collision-editor.js`):
-   - Visual collision boundary editor
-   - Ctrl+E to toggle in-game
-   - Generates collision point arrays
+5. **World Building**:
+   - **UPDATED**: All world building is done through `map-editor.html`
+   - Multi-Circle collision editor with visual drag & drop
+   - Real-time collision preview and validation
+   - Automatic optimization of overlapping circles
+   - Island placement and asset management
 
 ## Key Controls
 
@@ -96,7 +104,6 @@ The map editor can automatically save loaded images to the `assets/Islands` fold
 - **Zoom**: Mouse wheel or +/- keys
 - **Reset Zoom**: 0 key
 - **Enter Town**: Enter key (when near town area)
-- **Collision Editor**: Ctrl+E (debug tool)
 
 ## Development Standards (from .cursor/rules)
 

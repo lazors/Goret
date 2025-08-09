@@ -1,0 +1,2077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GORET - Map Editor (PNG-Based Multi-Circle Collision)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0f1a;
+            color: #ecf0f1;
+            overflow: hidden;
+        }
+
+        .protocol-warning {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #e74c3c;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            z-index: 10000;
+            font-size: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            display: none;
+        }
+
+        .protocol-warning strong {
+            font-size: 18px;
+        }
+
+        .protocol-warning code {
+            background: rgba(0,0,0,0.2);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        .main-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .left-panel {
+            width: 350px;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            border-right: 3px solid #3498db;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+        }
+
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            background: #1e3a5f;
+        }
+
+        .right-panel {
+            width: 300px;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            border-left: 3px solid #3498db;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+
+        .header h1 {
+            font-size: 20px;
+            color: #3498db;
+            text-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+            margin-bottom: 5px;
+        }
+
+        .header .version {
+            font-size: 12px;
+            color: #95a5a6;
+            font-weight: normal;
+        }
+
+        .section {
+            margin-bottom: 25px;
+            background: rgba(44, 62, 80, 0.6);
+            border-radius: 8px;
+            padding: 18px;
+            border: 1px solid rgba(52, 152, 219, 0.2);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            margin: 6px 0;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2980b9, #1abc9c);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #229954);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #229954, #1e8449);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f39c12, #d68910);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: linear-gradient(135deg, #d68910, #b7950b);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #c0392b, #a93226);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+        }
+
+        .btn.active {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            box-shadow: 0 0 15px rgba(231, 76, 60, 0.5);
+        }
+
+        .input-group {
+            margin: 10px 0;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            color: #bdc3c7;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 8px 12px;
+            background: rgba(44, 62, 80, 0.8);
+            border: 1px solid #3498db;
+            border-radius: 5px;
+            color: #ecf0f1;
+            font-size: 12px;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #2ecc71;
+            box-shadow: 0 0 5px rgba(46, 204, 113, 0.3);
+        }
+
+        #worldCanvas {
+            display: block;
+            cursor: crosshair;
+            width: 100%;
+            height: 100%;
+            background: #1e3a5f;
+        }
+
+        .status-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #00ff00;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #3498db;
+        }
+
+        .collision-circles-list {
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(44, 62, 80, 0.6);
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        .circle-item {
+            padding: 8px 12px;
+            margin: 4px 0;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .circle-item:hover {
+            background: rgba(52, 152, 219, 0.2);
+            border-left-color: #3498db;
+        }
+
+        .circle-item.selected {
+            background: rgba(231, 76, 60, 0.2);
+            border-left-color: #e74c3c;
+        }
+
+        .circle-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .tool-palette {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin: 15px 0;
+        }
+
+        .island-list {
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(44, 62, 80, 0.6);
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        .island-item {
+            padding: 8px 12px;
+            margin: 4px 0;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .island-item:hover {
+            background: rgba(52, 152, 219, 0.2);
+            border-left-color: #3498db;
+        }
+
+        .island-item.selected {
+            background: rgba(231, 76, 60, 0.2);
+            border-left-color: #e74c3c;
+        }
+
+        .grid-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        .grid-controls input[type="range"] {
+            flex: 1;
+        }
+
+        .image-preview {
+            width: 100%;
+            max-height: 100px;
+            object-fit: contain;
+            border-radius: 4px;
+            border: 1px solid #3498db;
+            margin: 5px 0;
+        }
+
+        .auto-generate-section {
+            background: rgba(39, 174, 96, 0.1);
+            border: 1px solid rgba(39, 174, 96, 0.3);
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        .loading-indicator {
+            text-align: center;
+            color: #f39c12;
+            font-style: italic;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Protocol Warning -->
+    <div class="protocol-warning" id="protocolWarning">
+        <strong>⚠️ CORS Error: Cannot load PNG assets!</strong><br>
+        You must access this map editor through an HTTP server, not as a local file.<br>
+        Please navigate to: <code>http://localhost:8000/map-editor.html</code><br>
+        If the server isn't running, use: <code>npm run dev</code> or <code>npx http-server -p 8000 --cors</code>
+    </div>
+    
+    <div class="main-container">
+        <!-- Left Panel: Tools & Controls -->
+        <div class="left-panel">
+            <div class="header">
+                <h1>🌊 GORET Map Editor</h1>
+                <div class="version">PNG-Based Multi-Circle v3.1</div>
+            </div>
+
+            <!-- View Controls -->
+            <div class="section">
+                <div class="section-title">🔍 View Controls</div>
+                <button class="btn btn-primary" onclick="mapEditor.toggleGrid()">
+                    <span id="gridToggleText">Hide Grid</span> (G)
+                </button>
+                <div class="grid-controls">
+                    <label>Grid Size:</label>
+                    <input type="range" id="gridSizeSlider" min="50" max="200" value="100" 
+                           onchange="mapEditor.setGridSize(this.value)">
+                    <span id="gridSizeValue">100px</span>
+                </div>
+                <button class="btn btn-primary" onclick="mapEditor.fitWorld()">Fit World (F)</button>
+                <button class="btn btn-primary" onclick="mapEditor.resetView()">Reset View (R)</button>
+            </div>
+
+            <!-- Tool Palette -->
+            <div class="section">
+                <div class="section-title">🛠️ Tools</div>
+                <div class="tool-palette">
+                    <button class="btn btn-primary active" id="selectTool" onclick="mapEditor.setTool('select')">
+                        🎯 Select
+                    </button>
+                    <button class="btn btn-success" id="addIslandTool" onclick="mapEditor.setTool('addIsland')">
+                        🏝️ Add Island
+                    </button>
+                    <button class="btn btn-warning" id="addCircleTool" onclick="mapEditor.setTool('addCircle')">
+                        ⭕ Add Circle
+                    </button>
+                    <button class="btn btn-danger" id="deleteTool" onclick="mapEditor.setTool('delete')">
+                        🗑️ Delete
+                    </button>
+                </div>
+            </div>
+
+            <!-- PNG Assets -->
+            <div class="section">
+                <div class="section-title">🖼️ PNG Assets</div>
+                <div class="input-group">
+                    <label>Available Island PNGs:</label>
+                    <select id="pngSelector" onchange="mapEditor.previewPNG(this.value)">
+                        <option value="">-- Loading PNGs... --</option>
+                    </select>
+                </div>
+                <div id="pngPreview" style="display: none;">
+                    <img id="previewImage" class="image-preview" alt="Island preview">
+                    <button class="btn btn-success" onclick="mapEditor.addIslandFromPNG()">
+                        🏝️ Add Island from PNG
+                    </button>
+                </div>
+            </div>
+
+            <!-- World Management -->
+            <div class="section">
+                <div class="section-title">🌍 World Management</div>
+                <button class="btn btn-success" onclick="mapEditor.loadFromServer()">
+                    📥 Load from Server
+                </button>
+                <button class="btn btn-warning" onclick="mapEditor.saveToServer()">
+                    💾 Save to Server
+                </button>
+                <button class="btn btn-primary" onclick="mapEditor.importJSON()">
+                    📂 Import JSON
+                </button>
+                <button class="btn btn-primary" onclick="mapEditor.exportJSON()">
+                    📤 Export JSON
+                </button>
+            </div>
+
+            <!-- Debug Controls -->
+            <div class="section">
+                <div class="section-title">🔬 Debug</div>
+                <button class="btn btn-warning" onclick="mapEditor.toggleDebugMode()">
+                    🐛 Debug Mode (F12)
+                </button>
+                <button class="btn btn-primary" onclick="mapEditor.validateWorld()">
+                    ✅ Validate World
+                </button>
+            </div>
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="canvas-area">
+            <canvas id="worldCanvas"></canvas>
+            
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <div id="mouseInfo">Mouse: (0, 0) | World: (0, 0)</div>
+                <div id="toolInfo">Tool: Select | Mode: Normal</div>
+                <div id="performanceInfo">FPS: 60 | Islands: 0 | Circles: 0</div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Island Properties -->
+        <div class="right-panel">
+            <div class="header">
+                <h1>🏝️ Island Properties</h1>
+            </div>
+
+            <!-- Island Selection -->
+            <div class="section">
+                <div class="section-title">📋 Island Selection</div>
+                <div class="input-group">
+                    <label>Select Island:</label>
+                    <select id="islandSelector" onchange="mapEditor.selectIslandById(this.value)">
+                        <option value="">-- No islands loaded --</option>
+                    </select>
+                </div>
+                <div class="island-list" id="islandList">
+                    <div style="text-align: center; color: #7f8c8d; padding: 20px;">
+                        No islands loaded. Click "Load from Server" to begin.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Island Properties -->
+            <div class="section" id="islandPropsSection" style="display: none;">
+                <div class="section-title">⚙️ Properties</div>
+                
+                <div class="input-group">
+                    <label>Name:</label>
+                    <input type="text" id="islandName" placeholder="Island Name" onchange="mapEditor.updateSelectedIsland()">
+                </div>
+                
+                <div class="input-group">
+                    <label>PNG Image:</label>
+                    <select id="islandImageSelector" onchange="mapEditor.changeIslandImage(this.value)">
+                        <option value="">-- No Image --</option>
+                    </select>
+                    <div id="islandImagePreview" style="display: none;">
+                        <img id="islandPreviewImage" class="image-preview" alt="Island image">
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="input-group">
+                        <label>X Position:</label>
+                        <input type="number" id="islandX" placeholder="X" onchange="mapEditor.updateSelectedIsland()">
+                    </div>
+                    <div class="input-group">
+                        <label>Y Position:</label>
+                        <input type="number" id="islandY" placeholder="Y" onchange="mapEditor.updateSelectedIsland()">
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label>Visual Scale:</label>
+                    <input type="number" id="islandScale" placeholder="Scale" step="0.1" onchange="mapEditor.updateSelectedIsland()">
+                </div>
+                
+                <button class="btn btn-primary" onclick="mapEditor.updateSelectedIsland()">
+                    💾 Update Island
+                </button>
+                <button class="btn btn-danger" onclick="mapEditor.deleteSelectedIsland()">
+                    🗑️ Delete Island
+                </button>
+            </div>
+
+            <!-- Collision Circles Editor -->
+            <div class="section" id="collisionSection" style="display: none;">
+                <div class="section-title">⭕ Collision Circles</div>
+                
+                <div class="auto-generate-section">
+                    <div style="font-weight: bold; margin-bottom: 5px;">🤖 Auto-Generate</div>
+                    <button class="btn btn-success" onclick="mapEditor.generateCirclesFromPNG()" style="margin: 2px 0;">
+                        🎯 Auto-Generate from PNG
+                    </button>
+                    <div style="font-size: 10px; color: #7f8c8d; margin-top: 5px;">
+                        Automatically creates circles based on PNG shape
+                    </div>
+                </div>
+                
+                <div class="tool-palette">
+                    <button class="btn btn-success" onclick="mapEditor.addCollisionCircle()">
+                        ➕ Add Circle
+                    </button>
+                    <button class="btn btn-warning" onclick="mapEditor.optimizeCircles()">
+                        ⚡ Optimize
+                    </button>
+                </div>
+                
+                <div class="collision-circles-list" id="collisionCirclesList">
+                    <div style="text-align: center; color: #7f8c8d;">
+                        No collision circles defined
+                    </div>
+                </div>
+                
+                <div id="selectedCircleProps" style="display: none;">
+                    <div class="circle-controls">
+                        <div class="input-group">
+                            <label>X Offset:</label>
+                            <input type="number" id="circleX" onchange="mapEditor.updateSelectedCircle()">
+                        </div>
+                        <div class="input-group">
+                            <label>Y Offset:</label>
+                            <input type="number" id="circleY" onchange="mapEditor.updateSelectedCircle()">
+                        </div>
+                        <div class="input-group">
+                            <label>Radius:</label>
+                            <input type="number" id="circleRadius" onchange="mapEditor.updateSelectedCircle()">
+                        </div>
+                    </div>
+                    <button class="btn btn-danger" onclick="mapEditor.deleteSelectedCircle()">
+                        🗑️ Delete Circle
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class MapEditor {
+            constructor() {
+                this.version = '3.1.0';
+                this.canvas = document.getElementById('worldCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                // World configuration
+                this.worldWidth = 10240;
+                this.worldHeight = 7680;
+                this.gridSize = 100;
+                this.showGrid = true;
+                this.debugMode = false;
+                
+                // Viewport
+                this.zoom = 0.08;
+                this.offsetX = 0;
+                this.offsetY = 0;
+                this.minZoom = 0.02;
+                this.maxZoom = 3.0;
+                
+                // State
+                this.islands = [];
+                this.selectedIsland = null;
+                this.selectedCircle = null;
+                this.currentTool = 'select';
+                
+                // PNG Assets
+                this.availablePNGs = [];
+                this.loadedImages = new Map();
+                this.selectedPNG = null;
+                
+                // Performance monitoring
+                this.fps = 0;
+                this.frameCount = 0;
+                this.lastTime = 0;
+                
+                // Mouse state
+                this.mouse = {
+                    x: 0, y: 0,
+                    worldX: 0, worldY: 0,
+                    isDown: false,
+                    isDragging: false,
+                    lastX: 0, lastY: 0
+                };
+                
+                this.init();
+            }
+            
+            async init() {
+                console.log('🌊 GORET Map Editor v' + this.version + ' (PNG-Based Multi-Circle) initializing...');
+                
+                // Check if running from file:// protocol
+                if (window.location.protocol === 'file:') {
+                    console.error('⚠️ Map editor accessed via file:// protocol - PNG loading will fail!');
+                    document.getElementById('protocolWarning').style.display = 'block';
+                    // Still initialize but with limited functionality
+                }
+                
+                this.setupCanvas();
+                this.setupEventListeners();
+                this.startRenderLoop();
+                await this.loadAvailablePNGs();
+                this.updateUI();
+                console.log('✅ Map Editor ready!');
+            }
+            
+            async loadAvailablePNGs() {
+                try {
+                    // Skip PNG loading if running from file:// protocol
+                    if (window.location.protocol === 'file:') {
+                        console.warn('⚠️ Running from file:// protocol - PNG loading skipped');
+                        this.availablePNGs = [];
+                        return;
+                    }
+                    
+                    console.log('📥 Loading available PNG assets...');
+                    const response = await fetch('http://localhost:8001/api/list-island-images');
+                    
+                    if (!response.ok) {
+                        throw new Error(`Server responded with ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    this.availablePNGs = data.images || [];
+                    
+                    // Load images into memory
+                    for (let pngInfo of this.availablePNGs) {
+                        const img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        
+                        await new Promise((resolve, reject) => {
+                            img.onload = () => {
+                                this.loadedImages.set(pngInfo.filename, img);
+                                console.log(`✅ Loaded PNG: ${pngInfo.filename}`);
+                                resolve();
+                            };
+                            img.onerror = () => {
+                                console.warn(`⚠️ Failed to load PNG: ${pngInfo.filename}`);
+                                resolve(); // Continue with other images
+                            };
+                            // Use HTTP URL if available, fallback to relative path
+                            img.src = window.location.protocol !== 'file:' 
+                                ? `http://localhost:8000/${pngInfo.path}`
+                                : pngInfo.path;
+                        });
+                    }
+                    
+                    // Update UI dropdowns
+                    this.updatePNGSelectors();
+                    console.log(`✅ Loaded ${this.availablePNGs.length} PNG assets`);
+                    
+                } catch (error) {
+                    console.log(`❌ Failed to load PNG assets: ${error.message}`);
+                    // Continue without PNG assets
+                    this.availablePNGs = [];
+                }
+            }
+            
+            updatePNGSelectors() {
+                const pngSelector = document.getElementById('pngSelector');
+                const islandImageSelector = document.getElementById('islandImageSelector');
+                
+                // Clear existing options
+                pngSelector.innerHTML = '<option value="">-- Select PNG --</option>';
+                islandImageSelector.innerHTML = '<option value="">-- No Image --</option>';
+                
+                // Add PNG options
+                this.availablePNGs.forEach((pngInfo, index) => {
+                    const option1 = document.createElement('option');
+                    option1.value = pngInfo.filename;
+                    option1.textContent = pngInfo.filename.replace('.png', '').replace('_', ' ');
+                    pngSelector.appendChild(option1);
+                    
+                    const option2 = document.createElement('option');
+                    option2.value = pngInfo.filename;
+                    option2.textContent = pngInfo.filename.replace('.png', '').replace('_', ' ');
+                    islandImageSelector.appendChild(option2);
+                });
+            }
+            
+            previewPNG(filename) {
+                const previewDiv = document.getElementById('pngPreview');
+                const previewImg = document.getElementById('previewImage');
+                
+                if (!filename) {
+                    previewDiv.style.display = 'none';
+                    this.selectedPNG = null;
+                    return;
+                }
+                
+                this.selectedPNG = filename;
+                const pngInfo = this.availablePNGs.find(p => p.filename === filename);
+                
+                if (pngInfo) {
+                    previewImg.src = pngInfo.path;
+                    previewDiv.style.display = 'block';
+                }
+            }
+            
+            addIslandFromPNG() {
+                if (!this.selectedPNG) {
+                    alert('Please select a PNG first');
+                    return;
+                }
+                
+                const image = this.loadedImages.get(this.selectedPNG);
+                if (!image) {
+                    alert('PNG image not loaded properly');
+                    return;
+                }
+                
+                const newIsland = {
+                    name: this.selectedPNG.replace('.png', '').replace('_', ' '),
+                    x: this.worldWidth / 2, // Center of world
+                    y: this.worldHeight / 2,
+                    scale: 1.0,
+                    imageFilename: this.selectedPNG,
+                    image: image,
+                    collisionCircles: []
+                };
+                
+                // Auto-generate collision circles from PNG
+                this.generateCirclesForIsland(newIsland);
+                
+                this.islands.push(newIsland);
+                this.selectIsland(newIsland);
+                this.updateIslandsList();
+                this.render();
+                
+                console.log(`Added island from PNG: ${this.selectedPNG}`);
+            }
+            
+            async generateCirclesFromPNG() {
+                if (!this.selectedIsland || !this.selectedIsland.image) {
+                    alert('Please select an island with a PNG image first');
+                    return;
+                }
+                
+                const loadingDiv = document.getElementById('collisionCirclesList');
+                loadingDiv.innerHTML = '<div class="loading-indicator">🔄 Analyzing PNG shape...</div>';
+                
+                // Small delay to show loading indicator
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                this.generateCirclesForIsland(this.selectedIsland);
+                this.updateCollisionCirclesList();
+                this.render();
+                
+                console.log(`Auto-generated ${this.selectedIsland.collisionCircles.length} collision circles from PNG`);
+            }
+            
+            generateCirclesForIsland(island) {
+                if (!island.image) {
+                    // Fallback: single circle
+                    island.collisionCircles = [{ x: 0, y: 0, radius: 200 }];
+                    return;
+                }
+                
+                // Create a temporary canvas to analyze the PNG
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                // Set canvas size to image size
+                const img = island.image;
+                tempCanvas.width = img.width;
+                tempCanvas.height = img.height;
+                
+                // Draw image to get pixel data
+                tempCtx.drawImage(img, 0, 0);
+                
+                try {
+                    const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                    const pixels = imageData.data;
+                    
+                    // Find island bounds (non-transparent pixels)
+                    let minX = tempCanvas.width, maxX = 0;
+                    let minY = tempCanvas.height, maxY = 0;
+                    const opaquePixels = [];
+                    
+                    for (let y = 0; y < tempCanvas.height; y++) {
+                        for (let x = 0; x < tempCanvas.width; x++) {
+                            const index = (y * tempCanvas.width + x) * 4;
+                            const alpha = pixels[index + 3];
+                            
+                            if (alpha > 100) { // Consider semi-transparent as solid
+                                minX = Math.min(minX, x);
+                                maxX = Math.max(maxX, x);
+                                minY = Math.min(minY, y);
+                                maxY = Math.max(maxY, y);
+                                opaquePixels.push({ x, y });
+                            }
+                        }
+                    }
+                    
+                    if (opaquePixels.length === 0) {
+                        // Fallback for transparent images
+                        island.collisionCircles = [{ x: 0, y: 0, radius: 200 }];
+                        return;
+                    }
+                    
+                    // Calculate relative coordinates and generate circles
+                    const centerX = (minX + maxX) / 2;
+                    const centerY = (minY + maxY) / 2;
+                    const width = maxX - minX;
+                    const height = maxY - minY;
+                    
+                    // Scale factors to match visual size
+                    const scaleX = (island.scale || 1.0) * 2;
+                    const scaleY = (island.scale || 1.0) * 2;
+                    
+                    // Generate circles based on PNG shape analysis
+                    const circles = [];
+                    
+                    // Main central circle
+                    circles.push({
+                        x: 0,
+                        y: 0,
+                        radius: Math.max(width, height) * scaleX * 0.3
+                    });
+                    
+                    // Additional circles for better shape coverage
+                    if (width > height * 1.3) {
+                        // Wide island - add horizontal circles
+                        circles.push({
+                            x: -width * scaleX * 0.25,
+                            y: 0,
+                            radius: Math.min(width, height) * scaleX * 0.25
+                        });
+                        circles.push({
+                            x: width * scaleX * 0.25,
+                            y: 0,
+                            radius: Math.min(width, height) * scaleX * 0.25
+                        });
+                    } else if (height > width * 1.3) {
+                        // Tall island - add vertical circles
+                        circles.push({
+                            x: 0,
+                            y: -height * scaleY * 0.25,
+                            radius: Math.min(width, height) * scaleX * 0.25
+                        });
+                        circles.push({
+                            x: 0,
+                            y: height * scaleY * 0.25,
+                            radius: Math.min(width, height) * scaleX * 0.25
+                        });
+                    } else {
+                        // Roughly square - add corner circles
+                        const cornerRadius = Math.min(width, height) * scaleX * 0.2;
+                        circles.push({
+                            x: -width * scaleX * 0.2,
+                            y: -height * scaleY * 0.2,
+                            radius: cornerRadius
+                        });
+                        circles.push({
+                            x: width * scaleX * 0.2,
+                            y: -height * scaleY * 0.2,
+                            radius: cornerRadius
+                        });
+                        circles.push({
+                            x: -width * scaleX * 0.2,
+                            y: height * scaleY * 0.2,
+                            radius: cornerRadius
+                        });
+                        circles.push({
+                            x: width * scaleX * 0.2,
+                            y: height * scaleY * 0.2,
+                            radius: cornerRadius
+                        });
+                    }
+                    
+                    // Ensure minimum radius and round values
+                    island.collisionCircles = circles.map(circle => ({
+                        x: Math.round(circle.x),
+                        y: Math.round(circle.y),
+                        radius: Math.max(50, Math.round(circle.radius))
+                    }));
+                    
+                } catch (error) {
+                    console.warn('Error analyzing PNG pixels:', error);
+                    // Fallback circle generation
+                    island.collisionCircles = [
+                        { x: 0, y: 0, radius: 200 },
+                        { x: -100, y: -100, radius: 100 },
+                        { x: 100, y: -100, radius: 100 },
+                        { x: -100, y: 100, radius: 100 },
+                        { x: 100, y: 100, radius: 100 }
+                    ];
+                }
+            }
+            
+            changeIslandImage(filename) {
+                if (!this.selectedIsland) return;
+                
+                if (!filename) {
+                    this.selectedIsland.imageFilename = null;
+                    this.selectedIsland.image = null;
+                    document.getElementById('islandImagePreview').style.display = 'none';
+                } else {
+                    this.selectedIsland.imageFilename = filename;
+                    this.selectedIsland.image = this.loadedImages.get(filename);
+                    
+                    const previewDiv = document.getElementById('islandImagePreview');
+                    const previewImg = document.getElementById('islandPreviewImage');
+                    const pngInfo = this.availablePNGs.find(p => p.filename === filename);
+                    
+                    if (pngInfo) {
+                        previewImg.src = window.location.protocol !== 'file:' 
+                            ? `http://localhost:8000/${pngInfo.path}`
+                            : pngInfo.path;
+                        previewDiv.style.display = 'block';
+                    }
+                }
+                
+                this.render();
+            }
+            
+            setupCanvas() {
+                const container = this.canvas.parentElement;
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+            }
+            
+            resizeCanvas() {
+                const container = this.canvas.parentElement;
+                this.canvas.width = container.clientWidth;
+                this.canvas.height = container.clientHeight;
+                this.render();
+            }
+            
+            setupEventListeners() {
+                // Mouse events
+                this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
+                this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+                this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
+                this.canvas.addEventListener('wheel', (e) => this.onWheel(e));
+                this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+                
+                // Keyboard events
+                window.addEventListener('keydown', (e) => this.onKeyDown(e));
+            }
+            
+            onMouseDown(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                this.mouse.x = e.clientX - rect.left;
+                this.mouse.y = e.clientY - rect.top;
+                this.mouse.isDown = true;
+                this.mouse.lastX = this.mouse.x;
+                this.mouse.lastY = this.mouse.y;
+                
+                this.updateWorldMouse();
+                
+                // Handle tool-specific actions
+                switch (this.currentTool) {
+                    case 'select':
+                        this.handleSelectClick();
+                        break;
+                    case 'addIsland':
+                        this.handleAddIslandClick();
+                        break;
+                    case 'addCircle':
+                        this.handleAddCircleClick();
+                        break;
+                    case 'delete':
+                        this.handleDeleteClick();
+                        break;
+                }
+                
+                this.render();
+            }
+            
+            onMouseMove(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                this.mouse.x = e.clientX - rect.left;
+                this.mouse.y = e.clientY - rect.top;
+                
+                this.updateWorldMouse();
+                
+                // Handle dragging
+                if (this.mouse.isDown) {
+                    if (this.currentTool === 'select' && this.selectedCircle && this.selectedIsland) {
+                        // Drag selected circle
+                        this.selectedCircle.x = this.mouse.worldX - this.selectedIsland.x;
+                        this.selectedCircle.y = this.mouse.worldY - this.selectedIsland.y;
+                        this.updateSelectedCircleUI();
+                        this.render();
+                    } else if (this.currentTool === 'select' && !this.selectedCircle) {
+                        // Pan view
+                        this.mouse.isDragging = true;
+                        const deltaX = this.mouse.x - this.mouse.lastX;
+                        const deltaY = this.mouse.y - this.mouse.lastY;
+                        
+                        this.offsetX -= deltaX / this.zoom;
+                        this.offsetY -= deltaY / this.zoom;
+                        
+                        this.render();
+                    }
+                }
+                
+                this.mouse.lastX = this.mouse.x;
+                this.mouse.lastY = this.mouse.y;
+                this.updateStatusBar();
+            }
+            
+            onMouseUp(e) {
+                this.mouse.isDown = false;
+                this.mouse.isDragging = false;
+            }
+            
+            onWheel(e) {
+                e.preventDefault();
+                
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // Zoom towards mouse
+                const worldMouseX = (mouseX / this.zoom) + this.offsetX;
+                const worldMouseY = (mouseY / this.zoom) + this.offsetY;
+                
+                const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom * zoomFactor));
+                
+                this.offsetX = worldMouseX - (mouseX / newZoom);
+                this.offsetY = worldMouseY - (mouseY / newZoom);
+                this.zoom = newZoom;
+                
+                this.render();
+                this.updateStatusBar();
+            }
+            
+            onKeyDown(e) {
+                switch (e.code) {
+                    case 'KeyG':
+                        e.preventDefault();
+                        this.toggleGrid();
+                        break;
+                    case 'KeyF':
+                        e.preventDefault();
+                        this.fitWorld();
+                        break;
+                    case 'KeyR':
+                        e.preventDefault();
+                        this.resetView();
+                        break;
+                    case 'F12':
+                        e.preventDefault();
+                        this.toggleDebugMode();
+                        break;
+                    case 'Delete':
+                        if (this.selectedCircle) {
+                            this.deleteSelectedCircle();
+                        } else if (this.selectedIsland) {
+                            this.deleteSelectedIsland();
+                        }
+                        break;
+                }
+            }
+            
+            updateWorldMouse() {
+                this.mouse.worldX = (this.mouse.x / this.zoom) + this.offsetX;
+                this.mouse.worldY = (this.mouse.y / this.zoom) + this.offsetY;
+            }
+            
+            // Tool Management
+            setTool(tool) {
+                this.currentTool = tool;
+                
+                // Update UI
+                document.querySelectorAll('.tool-palette .btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                const toolButton = document.getElementById(tool + 'Tool');
+                if (toolButton) {
+                    toolButton.classList.add('active');
+                }
+                
+                // Update cursor
+                this.updateCursor();
+                this.updateStatusBar();
+                console.log(`Tool changed to: ${tool}`);
+            }
+            
+            updateCursor() {
+                const cursors = {
+                    select: 'default',
+                    addIsland: 'crosshair',
+                    addCircle: 'crosshair',
+                    delete: 'not-allowed'
+                };
+                
+                this.canvas.style.cursor = cursors[this.currentTool] || 'default';
+            }
+            
+            // Island Management
+            handleSelectClick() {
+                // Check if clicking on a collision circle
+                for (let island of this.islands) {
+                    if (island.collisionCircles) {
+                        for (let circle of island.collisionCircles) {
+                            const worldX = island.x + circle.x;
+                            const worldY = island.y + circle.y;
+                            const dx = this.mouse.worldX - worldX;
+                            const dy = this.mouse.worldY - worldY;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            
+                            if (distance <= circle.radius) {
+                                this.selectIsland(island);
+                                this.selectCircle(circle);
+                                return;
+                            }
+                        }
+                    }
+                }
+                
+                // Check if clicking on an island
+                const island = this.getIslandAtMouse();
+                if (island) {
+                    this.selectIsland(island);
+                    this.selectCircle(null);
+                } else {
+                    this.selectIsland(null);
+                    this.selectCircle(null);
+                }
+            }
+            
+            handleAddIslandClick() {
+                const newIsland = {
+                    name: `Island ${this.islands.length + 1}`,
+                    x: this.mouse.worldX,
+                    y: this.mouse.worldY,
+                    scale: 1.0,
+                    imageFilename: null,
+                    image: null,
+                    collisionCircles: [
+                        { x: 0, y: 0, radius: 200 }
+                    ]
+                };
+                
+                this.islands.push(newIsland);
+                this.selectIsland(newIsland);
+                this.updateIslandsList();
+                console.log(`Added new island: ${newIsland.name} at (${Math.round(newIsland.x)}, ${Math.round(newIsland.y)})`);
+            }
+            
+            handleAddCircleClick() {
+                if (!this.selectedIsland) {
+                    alert('Please select an island first');
+                    return;
+                }
+                
+                const newCircle = {
+                    x: this.mouse.worldX - this.selectedIsland.x,
+                    y: this.mouse.worldY - this.selectedIsland.y,
+                    radius: 100
+                };
+                
+                if (!this.selectedIsland.collisionCircles) {
+                    this.selectedIsland.collisionCircles = [];
+                }
+                
+                this.selectedIsland.collisionCircles.push(newCircle);
+                this.selectCircle(newCircle);
+                this.updateCollisionCirclesList();
+                console.log(`Added collision circle to ${this.selectedIsland.name}`);
+            }
+            
+            handleDeleteClick() {
+                // Check if clicking on a collision circle
+                for (let island of this.islands) {
+                    if (island.collisionCircles) {
+                        for (let i = 0; i < island.collisionCircles.length; i++) {
+                            const circle = island.collisionCircles[i];
+                            const worldX = island.x + circle.x;
+                            const worldY = island.y + circle.y;
+                            const dx = this.mouse.worldX - worldX;
+                            const dy = this.mouse.worldY - worldY;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            
+                            if (distance <= circle.radius) {
+                                if (confirm(`Delete collision circle from ${island.name}?`)) {
+                                    island.collisionCircles.splice(i, 1);
+                                    this.selectCircle(null);
+                                    this.updateCollisionCirclesList();
+                                    this.render();
+                                }
+                                return;
+                            }
+                        }
+                    }
+                }
+                
+                // Check if clicking on an island
+                const island = this.getIslandAtMouse();
+                if (island) {
+                    if (confirm(`Delete island "${island.name}"?`)) {
+                        const index = this.islands.indexOf(island);
+                        this.islands.splice(index, 1);
+                        this.selectIsland(null);
+                        this.updateIslandsList();
+                        this.render();
+                    }
+                }
+            }
+            
+            getIslandAtMouse() {
+                for (let island of this.islands) {
+                    if (island.image) {
+                        // Check against image bounds
+                        const scale = island.scale || 1.0;
+                        const halfWidth = (island.image.width * scale) / 2;
+                        const halfHeight = (island.image.height * scale) / 2;
+                        
+                        if (this.mouse.worldX >= island.x - halfWidth &&
+                            this.mouse.worldX <= island.x + halfWidth &&
+                            this.mouse.worldY >= island.y - halfHeight &&
+                            this.mouse.worldY <= island.y + halfHeight) {
+                            return island;
+                        }
+                    } else {
+                        // Fallback to circle collision
+                        const dx = this.mouse.worldX - island.x;
+                        const dy = this.mouse.worldY - island.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance <= 200) { // Default radius
+                            return island;
+                        }
+                    }
+                }
+                return null;
+            }
+            
+            selectIsland(island) {
+                this.selectedIsland = island;
+                
+                if (island) {
+                    this.updateIslandProperties();
+                    document.getElementById('islandPropsSection').style.display = 'block';
+                    document.getElementById('collisionSection').style.display = 'block';
+                    console.log(`Selected island: ${island.name}`);
+                } else {
+                    document.getElementById('islandPropsSection').style.display = 'none';
+                    document.getElementById('collisionSection').style.display = 'none';
+                }
+                
+                this.updateIslandsList();
+                this.updateCollisionCirclesList();
+                this.render();
+            }
+            
+            selectCircle(circle) {
+                this.selectedCircle = circle;
+                
+                if (circle) {
+                    document.getElementById('selectedCircleProps').style.display = 'block';
+                    this.updateSelectedCircleUI();
+                } else {
+                    document.getElementById('selectedCircleProps').style.display = 'none';
+                }
+                
+                this.updateCollisionCirclesList();
+            }
+            
+            selectIslandById(index) {
+                if (index === '') {
+                    this.selectIsland(null);
+                } else {
+                    this.selectIsland(this.islands[parseInt(index)]);
+                }
+            }
+            
+            updateIslandProperties() {
+                if (!this.selectedIsland) return;
+                
+                document.getElementById('islandName').value = this.selectedIsland.name || '';
+                document.getElementById('islandX').value = Math.round(this.selectedIsland.x);
+                document.getElementById('islandY').value = Math.round(this.selectedIsland.y);
+                document.getElementById('islandScale').value = this.selectedIsland.scale || 1.0;
+                
+                // Update image selector
+                const imageSelector = document.getElementById('islandImageSelector');
+                imageSelector.value = this.selectedIsland.imageFilename || '';
+                
+                // Update image preview
+                if (this.selectedIsland.imageFilename) {
+                    const previewDiv = document.getElementById('islandImagePreview');
+                    const previewImg = document.getElementById('islandPreviewImage');
+                    const pngInfo = this.availablePNGs.find(p => p.filename === this.selectedIsland.imageFilename);
+                    
+                    if (pngInfo) {
+                        previewImg.src = pngInfo.path;
+                        previewDiv.style.display = 'block';
+                    }
+                } else {
+                    document.getElementById('islandImagePreview').style.display = 'none';
+                }
+            }
+            
+            updateSelectedIsland() {
+                if (!this.selectedIsland) return;
+                
+                this.selectedIsland.name = document.getElementById('islandName').value;
+                this.selectedIsland.x = parseFloat(document.getElementById('islandX').value) || 0;
+                this.selectedIsland.y = parseFloat(document.getElementById('islandY').value) || 0;
+                this.selectedIsland.scale = parseFloat(document.getElementById('islandScale').value) || 1.0;
+                
+                this.updateIslandsList();
+                this.render();
+                console.log(`Updated island: ${this.selectedIsland.name}`);
+            }
+            
+            deleteSelectedIsland() {
+                if (!this.selectedIsland) return;
+                
+                const islandName = this.selectedIsland.name;
+                const index = this.islands.indexOf(this.selectedIsland);
+                
+                if (confirm(`Delete island "${islandName}"? This cannot be undone.`)) {
+                    this.islands.splice(index, 1);
+                    this.selectIsland(null);
+                    this.updateIslandsList();
+                    this.render();
+                    console.log(`Deleted island: ${islandName}`);
+                }
+            }
+            
+            // Collision Circle Management
+            addCollisionCircle() {
+                if (!this.selectedIsland) {
+                    alert('Please select an island first');
+                    return;
+                }
+                
+                const newCircle = {
+                    x: 0,
+                    y: 0,
+                    radius: 100
+                };
+                
+                if (!this.selectedIsland.collisionCircles) {
+                    this.selectedIsland.collisionCircles = [];
+                }
+                
+                this.selectedIsland.collisionCircles.push(newCircle);
+                this.selectCircle(newCircle);
+                this.updateCollisionCirclesList();
+                this.render();
+            }
+            
+            updateSelectedCircle() {
+                if (!this.selectedCircle) return;
+                
+                this.selectedCircle.x = parseFloat(document.getElementById('circleX').value) || 0;
+                this.selectedCircle.y = parseFloat(document.getElementById('circleY').value) || 0;
+                this.selectedCircle.radius = parseFloat(document.getElementById('circleRadius').value) || 100;
+                
+                this.render();
+            }
+            
+            updateSelectedCircleUI() {
+                if (!this.selectedCircle) return;
+                
+                document.getElementById('circleX').value = Math.round(this.selectedCircle.x);
+                document.getElementById('circleY').value = Math.round(this.selectedCircle.y);
+                document.getElementById('circleRadius').value = Math.round(this.selectedCircle.radius);
+            }
+            
+            deleteSelectedCircle() {
+                if (!this.selectedCircle || !this.selectedIsland) return;
+                
+                const index = this.selectedIsland.collisionCircles.indexOf(this.selectedCircle);
+                if (index > -1) {
+                    this.selectedIsland.collisionCircles.splice(index, 1);
+                    this.selectCircle(null);
+                    this.updateCollisionCirclesList();
+                    this.render();
+                }
+            }
+            
+            optimizeCircles() {
+                if (!this.selectedIsland) return;
+                
+                // Simple optimization: merge overlapping circles
+                const circles = this.selectedIsland.collisionCircles;
+                const optimized = [];
+                
+                for (let i = 0; i < circles.length; i++) {
+                    let merged = false;
+                    for (let j = 0; j < optimized.length; j++) {
+                        const dx = circles[i].x - optimized[j].x;
+                        const dy = circles[i].y - optimized[j].y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < (circles[i].radius + optimized[j].radius) * 0.5) {
+                            // Merge circles
+                            optimized[j].x = (circles[i].x + optimized[j].x) / 2;
+                            optimized[j].y = (circles[i].y + optimized[j].y) / 2;
+                            optimized[j].radius = Math.max(circles[i].radius, optimized[j].radius) * 1.2;
+                            merged = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!merged) {
+                        optimized.push({ ...circles[i] });
+                    }
+                }
+                
+                this.selectedIsland.collisionCircles = optimized;
+                this.updateCollisionCirclesList();
+                this.render();
+                console.log(`Optimized collision circles: ${circles.length} -> ${optimized.length}`);
+            }
+            
+            // Server Communication
+            async loadFromServer() {
+                try {
+                    console.log('📥 Loading islands from server...');
+                    const response = await fetch('http://localhost:8001/api/islands/load');
+                    
+                    if (!response.ok) {
+                        throw new Error(`Server responded with ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Process loaded islands and load their images
+                    if (data.islands) {
+                        this.islands = await Promise.all(data.islands.map(async (island) => {
+                            // Convert old polygon collision to Multi-Circle if needed
+                            if (!island.collisionCircles && island.collision) {
+                                island.collisionCircles = this.convertPolygonToCircles(island);
+                                delete island.collision;
+                            }
+                            
+                            // Load island image if specified
+                            if (island.imageFilename && this.loadedImages.has(island.imageFilename)) {
+                                island.image = this.loadedImages.get(island.imageFilename);
+                            }
+                            
+                            return island;
+                        }));
+                    } else {
+                        this.islands = [];
+                    }
+                    
+                    console.log(`✅ Loaded ${this.islands.length} islands from server`);
+                    this.updateIslandsList();
+                    this.fitWorld();
+                    
+                } catch (error) {
+                    console.log(`❌ Failed to load from server: ${error.message}`);
+                    // Load default Multi-Circle data
+                    this.loadDefaultData();
+                }
+            }
+            
+            convertPolygonToCircles(island) {
+                // Simple conversion: create circles to cover the polygon area
+                const circles = [];
+                
+                if (island.collision && island.collision.length > 0) {
+                    // Find bounding box
+                    let minX = Infinity, maxX = -Infinity;
+                    let minY = Infinity, maxY = -Infinity;
+                    
+                    island.collision.forEach(point => {
+                        minX = Math.min(minX, point.x);
+                        maxX = Math.max(maxX, point.x);
+                        minY = Math.min(minY, point.y);
+                        maxY = Math.max(maxY, point.y);
+                    });
+                    
+                    // Create circles to cover the area
+                    const centerX = (minX + maxX) / 2 - island.x;
+                    const centerY = (minY + maxY) / 2 - island.y;
+                    const width = maxX - minX;
+                    const height = maxY - minY;
+                    
+                    // Main circle
+                    circles.push({
+                        x: centerX,
+                        y: centerY,
+                        radius: Math.max(width, height) / 3
+                    });
+                    
+                    // Additional circles for better coverage
+                    if (width > height) {
+                        circles.push({
+                            x: centerX - width / 4,
+                            y: centerY,
+                            radius: Math.min(width, height) / 3
+                        });
+                        circles.push({
+                            x: centerX + width / 4,
+                            y: centerY,
+                            radius: Math.min(width, height) / 3
+                        });
+                    } else {
+                        circles.push({
+                            x: centerX,
+                            y: centerY - height / 4,
+                            radius: Math.min(width, height) / 3
+                        });
+                        circles.push({
+                            x: centerX,
+                            y: centerY + height / 4,
+                            radius: Math.min(width, height) / 3
+                        });
+                    }
+                } else {
+                    // Fallback: single circle
+                    circles.push({
+                        x: 0,
+                        y: 0,
+                        radius: island.radius || 200
+                    });
+                }
+                
+                return circles;
+            }
+            
+            async saveToServer() {
+                try {
+                    console.log('💾 Saving islands to server...');
+                    
+                    // Prepare islands data (exclude image objects for serialization)
+                    const islandsData = this.islands.map(island => ({
+                        name: island.name,
+                        x: island.x,
+                        y: island.y,
+                        scale: island.scale || 1.0,
+                        imageFilename: island.imageFilename || null,
+                        collisionCircles: island.collisionCircles || []
+                    }));
+                    
+                    const data = {
+                        islands: islandsData,
+                        worldWidth: this.worldWidth,
+                        worldHeight: this.worldHeight
+                    };
+                    
+                    const response = await fetch('http://localhost:8001/api/islands/save', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Server responded with ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    console.log(`✅ Successfully saved ${this.islands.length} islands to server`);
+                    alert('Islands saved successfully!');
+                    
+                } catch (error) {
+                    console.log(`❌ Failed to save to server: ${error.message}`);
+                    // Fallback to local JSON export
+                    this.exportJSON();
+                }
+            }
+            
+            loadDefaultData() {
+                // Load default Multi-Circle collision data with PNG references
+                this.islands = [
+                    {
+                        name: 'Saint Kitts',
+                        x: 1810,
+                        y: 1655,
+                        scale: 1.0,
+                        imageFilename: 'Saint_Kitts.png',
+                        image: this.loadedImages.get('Saint_Kitts.png') || null,
+                        collisionCircles: [
+                            { x: 0, y: 0, radius: 280 },
+                            { x: -160, y: -155, radius: 120 },
+                            { x: 140, y: 145, radius: 100 },
+                            { x: -50, y: 100, radius: 80 }
+                        ]
+                    },
+                    {
+                        name: 'Nevis',
+                        x: 2500,
+                        y: 2800,
+                        scale: 1.0,
+                        imageFilename: 'Nevis.png',
+                        image: this.loadedImages.get('Nevis.png') || null,
+                        collisionCircles: [
+                            { x: 0, y: 0, radius: 180 },
+                            { x: -80, y: -60, radius: 80 },
+                            { x: 70, y: 50, radius: 60 }
+                        ]
+                    }
+                ];
+                
+                console.log('📦 Loaded default Multi-Circle island data with PNG references');
+                this.updateIslandsList();
+                this.fitWorld();
+            }
+            
+            // View Controls
+            toggleGrid() {
+                this.showGrid = !this.showGrid;
+                document.getElementById('gridToggleText').textContent = this.showGrid ? 'Hide Grid' : 'Show Grid';
+                this.render();
+            }
+            
+            setGridSize(size) {
+                this.gridSize = parseInt(size);
+                document.getElementById('gridSizeValue').textContent = size + 'px';
+                this.render();
+            }
+            
+            fitWorld() {
+                const padding = 100;
+                const scaleX = (this.canvas.width - padding * 2) / this.worldWidth;
+                const scaleY = (this.canvas.height - padding * 2) / this.worldHeight;
+                
+                this.zoom = Math.min(scaleX, scaleY);
+                this.offsetX = (this.worldWidth - this.canvas.width / this.zoom) / 2;
+                this.offsetY = (this.worldHeight - this.canvas.height / this.zoom) / 2;
+                
+                this.render();
+            }
+            
+            resetView() {
+                this.zoom = 0.08;
+                this.offsetX = 0;
+                this.offsetY = 0;
+                this.render();
+            }
+            
+            toggleDebugMode() {
+                this.debugMode = !this.debugMode;
+                this.render();
+                console.log(`Debug mode: ${this.debugMode ? 'ON' : 'OFF'}`);
+            }
+            
+            validateWorld() {
+                const issues = [];
+                
+                // Check for overlapping collision circles
+                this.islands.forEach(island => {
+                    if (!island.collisionCircles || island.collisionCircles.length === 0) {
+                        issues.push(`Island "${island.name}" has no collision circles`);
+                    }
+                });
+                
+                // Check for islands outside world bounds
+                this.islands.forEach(island => {
+                    if (island.x < 0 || island.x > this.worldWidth || 
+                        island.y < 0 || island.y > this.worldHeight) {
+                        issues.push(`Island "${island.name}" is outside world bounds`);
+                    }
+                });
+                
+                if (issues.length === 0) {
+                    alert('✅ World validation passed!\n\nNo issues detected.');
+                } else {
+                    alert(`⚠️ World validation found ${issues.length} issues:\n\n` + 
+                          issues.map(issue => `• ${issue}`).join('\n'));
+                }
+            }
+            
+            // Data Management
+            importJSON() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            this.islands = data.islands || data || [];
+                            
+                            // Load images for imported islands
+                            this.islands.forEach(island => {
+                                if (island.imageFilename && this.loadedImages.has(island.imageFilename)) {
+                                    island.image = this.loadedImages.get(island.imageFilename);
+                                }
+                            });
+                            
+                            this.updateIslandsList();
+                            this.fitWorld();
+                            console.log(`📂 Imported ${this.islands.length} islands from JSON`);
+                        } catch (error) {
+                            console.log(`❌ Failed to import JSON: ${error.message}`);
+                            alert('❌ Failed to import JSON file. Please check the file format.');
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+                
+                input.click();
+            }
+            
+            exportJSON() {
+                // Prepare data for export (exclude image objects)
+                const exportData = {
+                    worldWidth: this.worldWidth,
+                    worldHeight: this.worldHeight,
+                    islands: this.islands.map(island => ({
+                        name: island.name,
+                        x: island.x,
+                        y: island.y,
+                        scale: island.scale || 1.0,
+                        imageFilename: island.imageFilename || null,
+                        collisionCircles: island.collisionCircles || []
+                    })),
+                    exportedAt: new Date().toISOString(),
+                    version: this.version,
+                    collisionSystem: 'PNG-Based-Multi-Circle'
+                };
+                
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `goret-world-png-multicircle-${Date.now()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                console.log(`📤 Exported world data to JSON (${this.islands.length} islands)`);
+            }
+            
+            // UI Updates
+            updateStatusBar() {
+                document.getElementById('mouseInfo').textContent = 
+                    `Mouse: (${Math.round(this.mouse.x)}, ${Math.round(this.mouse.y)}) | ` +
+                    `World: (${Math.round(this.mouse.worldX)}, ${Math.round(this.mouse.worldY)})`;
+                
+                document.getElementById('toolInfo').textContent = 
+                    `Tool: ${this.currentTool} | Mode: ${this.debugMode ? 'Debug' : 'Normal'}`;
+                
+                const totalCircles = this.islands.reduce((sum, i) => sum + (i.collisionCircles?.length || 0), 0);
+                document.getElementById('performanceInfo').textContent = 
+                    `FPS: ${this.fps} | Islands: ${this.islands.length} | Circles: ${totalCircles}`;
+            }
+            
+            updateIslandsList() {
+                const selector = document.getElementById('islandSelector');
+                const list = document.getElementById('islandList');
+                
+                // Update selector
+                selector.innerHTML = '<option value="">-- Select Island --</option>';
+                
+                if (this.islands.length === 0) {
+                    list.innerHTML = '<div style="text-align: center; color: #7f8c8d; padding: 20px;">No islands loaded. Click "Load from Server" to begin.</div>';
+                    return;
+                }
+                
+                // Update selector and list
+                let listHTML = '';
+                
+                this.islands.forEach((island, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${island.name} (${island.collisionCircles?.length || 0} circles)`;
+                    selector.appendChild(option);
+                    
+                    const isSelected = island === this.selectedIsland;
+                    const imageIcon = island.imageFilename ? '🖼️' : '⭕';
+                    listHTML += `
+                        <div class="island-item ${isSelected ? 'selected' : ''}" onclick="mapEditor.selectIslandById('${index}')">
+                            <div style="font-weight: bold;">${imageIcon} ${island.name}</div>
+                            <div style="font-size: 10px; color: #7f8c8d;">
+                                Position: (${Math.round(island.x)}, ${Math.round(island.y)}) | 
+                                Circles: ${island.collisionCircles?.length || 0}
+                                ${island.imageFilename ? `<br>PNG: ${island.imageFilename}` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                list.innerHTML = listHTML;
+                
+                // Update selector to match selected island
+                if (this.selectedIsland) {
+                    const index = this.islands.indexOf(this.selectedIsland);
+                    if (index !== -1) {
+                        selector.value = index;
+                    }
+                }
+            }
+            
+            updateCollisionCirclesList() {
+                const list = document.getElementById('collisionCirclesList');
+                
+                if (!this.selectedIsland || !this.selectedIsland.collisionCircles || this.selectedIsland.collisionCircles.length === 0) {
+                    list.innerHTML = '<div style="text-align: center; color: #7f8c8d;">No collision circles defined</div>';
+                    return;
+                }
+                
+                let listHTML = '';
+                this.selectedIsland.collisionCircles.forEach((circle, index) => {
+                    const isSelected = circle === this.selectedCircle;
+                    listHTML += `
+                        <div class="circle-item ${isSelected ? 'selected' : ''}" 
+                             onclick="mapEditor.selectCircle(mapEditor.selectedIsland.collisionCircles[${index}])">
+                            <div>Circle ${index + 1}</div>
+                            <div style="font-size: 10px; color: #7f8c8d;">
+                                (${Math.round(circle.x)}, ${Math.round(circle.y)}) r:${Math.round(circle.radius)}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                list.innerHTML = listHTML;
+            }
+            
+            updateUI() {
+                this.updateStatusBar();
+                this.updateIslandsList();
+                this.updateCollisionCirclesList();
+            }
+            
+            // Performance Monitoring
+            updatePerformanceData() {
+                const now = performance.now();
+                
+                if (this.lastTime === 0) {
+                    this.lastTime = now;
+                    return;
+                }
+                
+                const deltaTime = now - this.lastTime;
+                this.frameCount++;
+                
+                if (deltaTime >= 1000) {
+                    this.fps = Math.round(this.frameCount * 1000 / deltaTime);
+                    this.frameCount = 0;
+                    this.lastTime = now;
+                    this.updateStatusBar();
+                }
+            }
+            
+            // Rendering System
+            startRenderLoop() {
+                const renderFrame = () => {
+                    this.render();
+                    this.updatePerformanceData();
+                    requestAnimationFrame(renderFrame);
+                };
+                
+                renderFrame();
+            }
+            
+            render() {
+                // Clear canvas
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Fill ocean background
+                this.ctx.fillStyle = '#1e3a5f';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Apply world transformations
+                this.ctx.save();
+                this.ctx.scale(this.zoom, this.zoom);
+                this.ctx.translate(-this.offsetX, -this.offsetY);
+                
+                // Draw grid
+                if (this.showGrid) {
+                    this.drawGrid();
+                }
+                
+                // Draw world boundaries
+                this.drawWorldBounds();
+                
+                // Draw islands
+                this.drawIslands();
+                
+                // Draw collision circles
+                if (this.debugMode) {
+                    this.drawCollisionCircles();
+                }
+                
+                this.ctx.restore();
+            }
+            
+            drawGrid() {
+                const startX = Math.floor(this.offsetX / this.gridSize) * this.gridSize;
+                const endX = startX + (this.canvas.width / this.zoom) + this.gridSize;
+                const startY = Math.floor(this.offsetY / this.gridSize) * this.gridSize;
+                const endY = startY + (this.canvas.height / this.zoom) + this.gridSize;
+                
+                // Minor grid lines
+                this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.15)';
+                this.ctx.lineWidth = 1 / this.zoom;
+                this.ctx.beginPath();
+                
+                for (let x = startX; x <= endX; x += this.gridSize) {
+                    if (x >= 0 && x <= this.worldWidth) {
+                        this.ctx.moveTo(x, Math.max(0, this.offsetY));
+                        this.ctx.lineTo(x, Math.min(this.worldHeight, this.offsetY + this.canvas.height / this.zoom));
+                    }
+                }
+                
+                for (let y = startY; y <= endY; y += this.gridSize) {
+                    if (y >= 0 && y <= this.worldHeight) {
+                        this.ctx.moveTo(Math.max(0, this.offsetX), y);
+                        this.ctx.lineTo(Math.min(this.worldWidth, this.offsetX + this.canvas.width / this.zoom), y);
+                    }
+                }
+                
+                this.ctx.stroke();
+            }
+            
+            drawWorldBounds() {
+                this.ctx.strokeStyle = '#ff6b6b';
+                this.ctx.lineWidth = 4 / this.zoom;
+                this.ctx.strokeRect(0, 0, this.worldWidth, this.worldHeight);
+                
+                // Draw world size label
+                this.ctx.fillStyle = '#ff6b6b';
+                this.ctx.font = `${20 / this.zoom}px Arial`;
+                this.ctx.textAlign = 'left';
+                this.ctx.fillText(`${this.worldWidth} × ${this.worldHeight}`, 20, 40 / this.zoom);
+            }
+            
+            drawIslands() {
+                for (let island of this.islands) {
+                    const isSelected = island === this.selectedIsland;
+                    
+                    if (island.image) {
+                        // Draw PNG image
+                        this.ctx.save();
+                        this.ctx.translate(island.x, island.y);
+                        
+                        const scale = island.scale || 1.0;
+                        const width = island.image.width * scale;
+                        const height = island.image.height * scale;
+                        
+                        // Draw island PNG centered
+                        this.ctx.drawImage(island.image, -width/2, -height/2, width, height);
+                        
+                        // Draw selection indicator
+                        if (isSelected) {
+                            this.ctx.strokeStyle = '#ff4757';
+                            this.ctx.lineWidth = 4 / this.zoom;
+                            this.ctx.strokeRect(-width/2 - 5/this.zoom, -height/2 - 5/this.zoom, 
+                                               width + 10/this.zoom, height + 10/this.zoom);
+                        }
+                        
+                        this.ctx.restore();
+                    } else {
+                        // Draw placeholder circle for islands without PNG
+                        this.ctx.strokeStyle = isSelected ? '#ff4757' : '#2ed573';
+                        this.ctx.fillStyle = isSelected ? 'rgba(255, 71, 87, 0.1)' : 'rgba(46, 213, 115, 0.1)';
+                        this.ctx.lineWidth = 3 / this.zoom;
+                        
+                        this.ctx.beginPath();
+                        this.ctx.arc(island.x, island.y, 200, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        this.ctx.stroke();
+                    }
+                    
+                    // Draw island name
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.font = `bold ${16 / this.zoom}px Arial`;
+                    this.ctx.textAlign = 'center';
+                    this.ctx.textBaseline = 'middle';
+                    
+                    // Background for text
+                    const textMetrics = this.ctx.measureText(island.name);
+                    const textWidth = textMetrics.width;
+                    const textHeight = 16 / this.zoom;
+                    
+                    const textY = island.image ? 
+                        island.y - (island.image.height * (island.scale || 1.0)) / 2 - 10 / this.zoom :
+                        island.y - 200 - 10 / this.zoom;
+                    
+                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    this.ctx.fillRect(
+                        island.x - textWidth / 2 - 5 / this.zoom,
+                        textY - textHeight - 5 / this.zoom,
+                        textWidth + 10 / this.zoom,
+                        textHeight + 8 / this.zoom
+                    );
+                    
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.fillText(island.name, island.x, textY);
+                    
+                    // Draw center point
+                    this.ctx.fillStyle = isSelected ? '#ff4757' : '#2ed573';
+                    this.ctx.beginPath();
+                    this.ctx.arc(island.x, island.y, 6 / this.zoom, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+            }
+            
+            drawCollisionCircles() {
+                this.islands.forEach(island => {
+                    if (island.collisionCircles && island.collisionCircles.length > 0) {
+                        island.collisionCircles.forEach((circle, index) => {
+                            const worldX = island.x + circle.x;
+                            const worldY = island.y + circle.y;
+                            const isSelected = circle === this.selectedCircle;
+                            
+                            // Draw circle
+                            const colors = ['rgba(255, 0, 0, 0.4)', 'rgba(0, 255, 0, 0.4)', 
+                                            'rgba(0, 0, 255, 0.4)', 'rgba(255, 255, 0, 0.4)',
+                                            'rgba(255, 0, 255, 0.4)'];
+                            
+                            if (isSelected) {
+                                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+                                this.ctx.lineWidth = 4 / this.zoom;
+                            } else {
+                                this.ctx.strokeStyle = colors[index % colors.length];
+                                this.ctx.lineWidth = 2 / this.zoom;
+                            }
+                            
+                            this.ctx.beginPath();
+                            this.ctx.arc(worldX, worldY, circle.radius, 0, Math.PI * 2);
+                            this.ctx.stroke();
+                            
+                            // Draw center
+                            this.ctx.fillStyle = isSelected ? 'white' : colors[index % colors.length];
+                            this.ctx.beginPath();
+                            this.ctx.arc(worldX, worldY, 4 / this.zoom, 0, Math.PI * 2);
+                            this.ctx.fill();
+                            
+                            // Draw label
+                            this.ctx.fillStyle = 'white';
+                            this.ctx.font = `${12 / this.zoom}px Arial`;
+                            this.ctx.textAlign = 'center';
+                            this.ctx.fillText(`C${index} (r:${circle.radius})`, worldX, worldY - circle.radius - 5 / this.zoom);
+                        });
+                    }
+                });
+            }
+        }
+        
+        // Initialize Map Editor
+        const mapEditor = new MapEditor();
+    </script>
+</body>
+</html>
