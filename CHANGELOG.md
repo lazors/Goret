@@ -7,12 +7,23 @@
 
 ## Versions
 
+### 0.0.3 (August 2025)
+
+- Map editor integration with live game updates
+- "Save & Apply to Game" button for instant changes
+- Ocean rendering with animated waves in map editor
+- Dynamic island reloading without server restart
+- Test integration page (game + editor side-by-side)
+
 ### 0.0.2 (August 2025)
 
 - Added port interface with 6 services
 - Saint Kitts island and port images
 - PortManager class for city interactions
 - Version tracking system
+- Multi-Circle collision system (replacing polygons)
+- PNG-based island rendering in map editor
+- Auto-generation of collision circles from PNG images
 
 ### 0.0.1 (July 2025)
 
@@ -26,9 +37,11 @@
 ## Planned
 
 - Trading system
-- Crew management
-- Multiple islands
-- Combat mechanics
+- Ship combat with PNG-based ship models
+- Crew management with PNG portraits
+- Quest system with NPCs
+- Ship upgrades and customization
+- Save system with game state persistence
 
 ---
 

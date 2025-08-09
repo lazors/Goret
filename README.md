@@ -7,10 +7,12 @@ Browser-based HTML5/JavaScript game with pirate ship control on a sea map with a
 - **8-direction ship movement** with smooth inertia
 - **Animated waves** with tile rendering
 - **Limited map boundaries** with collisions
-- **Island obstacles** with repulsion
+- **Island obstacles** with Multi-Circle collision system
 - **Visual effects**: ship wake, water splashes
 - **HUD interface** with speed and direction indicators
 - **Responsive design** for different screen sizes
+- **🗺️ Map Editor**: Visual world builder with PNG asset support
+- **🔄 Live Integration**: Map editor changes appear instantly in game
 
 ## 🎯 Controls
 
@@ -21,23 +23,33 @@ Browser-based HTML5/JavaScript game with pirate ship control on a sea map with a
 | **←** or **A** | Turn left              |
 | **→** or **D** | Turn right             |
 | **Esc**        | Pause/resume           |
+| **F10** or **F12** | Toggle debug mode   |
 
 ## 🗂️ Project Structure
 
 ```
 Goret/
-├── index.html          # Main HTML file
+├── index.html              # Main game file
+├── map-editor.html         # Visual map editor (PNG-based Multi-Circle)
+├── server.js               # Node.js server for map editor saves
+├── package.json            # NPM scripts and dependencies
 ├── css/
-│   └── style.css       # Styles and sea theme
+│   └── style.css           # Styles and sea theme
 ├── js/
-│   ├── main.js         # Initialization and game loop
-│   ├── ship.js         # Ship movement logic
-│   └── map.js          # Map and wave animation
+│   ├── main.js             # Game initialization and loop
+│   ├── ship.js             # Ship movement and physics
+│   ├── map.js              # Map rendering and island data loading
+│   ├── collision.js        # Multi-Circle collision detection
+│   ├── islands-data.js     # Auto-generated island data (DO NOT EDIT)
+│   └── map-editor/
+│       └── CLAUDE.md       # Map editor documentation
+├── data/
+│   └── islands.json        # Map editor save format
 └── assets/
-    ├── Islands/        # Island images and textures
-    ├── Ships/          # Ship models and sprites
-    ├── icons/          # UI icons and interface elements
-    └── models/         # 3D models and additional game objects
+    ├── Islands/            # PNG island images (Saint_Kitts.png, Nevis.png)
+    ├── Ships/              # Ship models and sprites
+    ├── icons/              # UI icons and interface elements
+    └── models/             # 3D models and additional game objects
 ```
 
 ## ⚙️ Technical Details
@@ -63,61 +75,120 @@ Goret/
 - Animated rings around islands
 - Gradient sea background
 
+## 🚀 Launch Commands
+
+### 🎮 **Game Only** (Basic Play)
+```bash
+npm start
+# Starts HTTP server on port 8000
+# Navigate to: http://localhost:8000/index.html
+```
+
+### 🛠️ **Development Mode** (Game + Map Editor)
+```bash
+npm run dev
+# Starts both servers:
+# - Game server: http://localhost:8000
+# - Map editor server: http://localhost:8001 (handles PNG uploads & saves)
+# Use for: Editing islands, collision circles, PNG assets
+```
+
+### 📝 **Map Editor Server Only**
+```bash
+npm run server
+# Starts only the map editor server on port 8001
+# Use with: http://localhost:8000 (run separately)
+```
+
+---
+
+## 🎯 **Quick Start Workflow**
+
+### **Play Game:**
+```bash
+npm run dev
+# Open: http://localhost:8000/index.html
+```
+
+### **Edit World:**
+```bash
+npm run dev
+# Open: http://localhost:8000/map-editor.html
+# Edit islands → Save to Server → Changes appear in game!
+```
+
+---
+
 ## 🚀 Running the Game
 
 ### 🖥️ Windows Launch Instructions
 
-#### Method 1: Local HTTP Server (Recommended)
+#### Method 1: NPM Commands (Recommended)
 
-For the best experience and to avoid CORS issues:
+**Prerequisites:** Node.js installed ([nodejs.org](https://nodejs.org/))
 
-1. **Install Node.js** (if not already installed):
+1. **Open PowerShell/Command Prompt in project folder**
 
-   - Download from [nodejs.org](https://nodejs.org/)
-   - Choose LTS version for Windows
-
-2. **Open PowerShell or Command Prompt**:
-
-   - Press `Win + R`, type `powershell`, press Enter
-   - Or search for "PowerShell" in Start menu
-
-3. **Navigate to the game folder**:
-
+2. **Install dependencies** (first time only):
    ```powershell
-   cd C:\path\to\your\goret\folder
+   npm install
    ```
 
-4. **Install and run HTTP server**:
+3. **Choose launch mode**:
 
+   **Game Only:**
    ```powershell
-   npx http-server -p 8000 --cors
+   npm start
+   ```
+   
+   **Full Development (Game + Map Editor):**
+   ```powershell
+   npm run dev
    ```
 
-5. **Open your browser** and go to:
-   - `http://localhost:8000` or `http://127.0.0.1:8000`
+4. **Open browser:**
+   - Game: `http://localhost:8000/index.html`
+   - Map Editor: `http://localhost:8000/map-editor.html`
 
-#### Method 2: Direct File Opening (Simple)
-
-For quick testing (may have limitations):
-
-1. **Navigate to the project folder** in Windows Explorer
-2. **Right-click on `index.html`**
-3. **Select "Open with"** → Choose your preferred browser
-4. **Enjoy the game!**
-
-#### Method 3: Python Server (Alternative)
-
-If you have Python installed:
+#### Method 2: Manual HTTP Server
 
 ```powershell
-# For Python 3.x
-python -m http.server 8000
-
-# For Python 2.x
-python -m SimpleHTTPServer 8000
+npx http-server -p 8000 --cors
 ```
 
-Then open `http://localhost:8000` in your browser.
+#### Method 3: Direct File Opening (Limited)
+
+Right-click `index.html` → "Open with" → Browser
+*Note: Map editor won't work properly with this method*
+
+---
+
+## 🗺️ Map Editor
+
+### **Visual World Builder**
+- **PNG-based islands**: Load island images from `assets/Islands/`
+- **Multi-Circle collision**: Simple 3-5 circles per island (10x faster than polygons)
+- **Live game integration**: Changes appear instantly in game
+- **Auto-generation**: Analyze PNG shapes to create collision circles
+
+### **Editor Workflow**
+1. **Start development servers**: `npm run dev`
+2. **Open map editor**: `http://localhost:8000/map-editor.html`
+3. **Edit islands**: 
+   - Add/move/resize islands
+   - Assign PNG images from assets folder
+   - Use "Auto-Generate from PNG" for smart collision placement
+4. **Save changes**: Click "Save to Server" 
+5. **Test in game**: `http://localhost:8000/index.html` - changes are live!
+
+### **Key Features**
+- ✅ **PNG Asset Integration** - Loads from `assets/Islands/`
+- ✅ **Multi-Circle Collision** - 90% accuracy, 10% complexity
+- ✅ **Visual Editing** - Drag & drop collision circles
+- ✅ **Auto-Save Integration** - Saves directly to game data
+- ✅ **Protocol Detection** - Warns if accessed via file://
+
+---
 
 ### 🌐 Browser Compatibility
 

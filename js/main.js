@@ -196,6 +196,21 @@ class Game {
         window.addEventListener('resize', () => {
             this.handleResize();
         });
+        
+        // Listen for island updates from map editor
+        window.addEventListener('message', (e) => {
+            if (e.data && e.data.type === 'islands-updated') {
+                console.log('🔄 Received island update from map editor');
+                if (this.map && e.data.islands) {
+                    this.map.updateIslands(e.data.islands);
+                    // Update collision manager with new islands
+                    if (this.collisionManager) {
+                        this.collisionManager.islands = this.map.islands;
+                        console.log('✅ Islands updated in game!');
+                    }
+                }
+            }
+        });
     }
     
     async loadAssets() {
@@ -205,9 +220,35 @@ class Game {
         const assetList = [
             { key: 'map', type: 'placeholder', width: 10240, height: 7680, color: '#1e3a5f' },
             { key: 'ship', type: 'image', src: 'assets/Ships/ship-4741839_960_720.webp' },
-            { key: 'island', type: 'image', src: 'assets/Islands/Saint_Kitts.png' },
             { key: 'wave', type: 'placeholder', width: 128, height: 128, color: '#2980b9' }
         ];
+        
+        // Dynamically add island images from ISLANDS_DATA
+        const islandImages = new Set();
+        if (typeof ISLANDS_DATA !== 'undefined' && Array.isArray(ISLANDS_DATA)) {
+            ISLANDS_DATA.forEach(island => {
+                if (island.imageFilename) {
+                    islandImages.add(island.imageFilename);
+                }
+            });
+        }
+        
+        // Add unique island images to asset list
+        let islandIndex = 0;
+        islandImages.forEach(filename => {
+            assetList.push({
+                key: `island_${filename}`,
+                type: 'image',
+                src: `assets/Islands/${filename}`
+            });
+            islandIndex++;
+        });
+        
+        // Fallback island images if no islands data
+        if (islandImages.size === 0) {
+            assetList.push({ key: 'island', type: 'image', src: 'assets/Islands/Saint_Kitts.png' });
+            assetList.push({ key: 'island2', type: 'image', src: 'assets/Islands/Nevis.png' });
+        }
         
         this.totalAssets = assetList.length;
         
@@ -340,6 +381,47 @@ class Game {
         
         // Initialize port manager
         this.portManager = new PortManager(this);
+        
+        // Make game instance globally accessible for map editor integration
+        window.game = this;
+    }
+    
+    // Method to reload islands from updated islands-data.js
+    async reloadIslands() {
+        try {
+            // Dynamically reload the islands-data.js file
+            const timestamp = new Date().getTime();
+            const script = document.createElement('script');
+            script.src = `js/islands-data.js?t=${timestamp}`;
+            
+            return new Promise((resolve, reject) => {
+                script.onload = () => {
+                    console.log('🔄 Reloaded islands-data.js');
+                    if (window.ISLANDS_DATA) {
+                        this.map.updateIslands(window.ISLANDS_DATA);
+                        // Update collision manager with new islands
+                        if (this.collisionManager) {
+                            this.collisionManager.islands = this.map.islands;
+                        }
+                        console.log('✅ Islands updated from file!');
+                        resolve();
+                    } else {
+                        reject(new Error('ISLANDS_DATA not found after reload'));
+                    }
+                };
+                script.onerror = reject;
+                document.head.appendChild(script);
+                
+                // Clean up old script tag
+                setTimeout(() => {
+                    if (script.parentNode) {
+                        script.parentNode.removeChild(script);
+                    }
+                }, 1000);
+            });
+        } catch (error) {
+            console.error('❌ Failed to reload islands:', error);
+        }
     }
     
     gameLoop(currentTime = 0) {

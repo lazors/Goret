@@ -417,6 +417,9 @@
                 <button class="btn btn-warning" onclick="mapEditor.saveToServer()">
                     💾 Save to Server
                 </button>
+                <button class="btn btn-danger" onclick="mapEditor.saveAndApplyToGame()">
+                    🎮 Save & Apply to Game
+                </button>
                 <button class="btn btn-primary" onclick="mapEditor.importJSON()">
                     📂 Import JSON
                 </button>
@@ -567,6 +570,7 @@
     </div>
 
     <script src="js/islands-data.js"></script>
+    <script src="js/map.js"></script>
     <script>
         class MapEditor {
             constructor() {
@@ -580,6 +584,13 @@
                 this.gridSize = 100;
                 this.showGrid = true;
                 this.debugMode = false;
+                
+                // Game map instance for ocean rendering
+                this.gameMap = null;
+                this.oceanCanvas = document.createElement('canvas');
+                this.oceanCtx = this.oceanCanvas.getContext('2d');
+                this.oceanCanvas.width = this.worldWidth;
+                this.oceanCanvas.height = this.worldHeight;
                 
                 // Viewport
                 this.zoom = 0.08;
@@ -624,6 +635,19 @@
                     console.error('⚠️ Map editor accessed via file:// protocol - PNG loading will fail!');
                     document.getElementById('protocolWarning').style.display = 'block';
                     // Still initialize but with limited functionality
+                }
+                
+                // Initialize game map for ocean rendering
+                try {
+                    // Create a minimal assets object for the GameMap
+                    const minimalAssets = {
+                        island: new Image() // Placeholder, not used in map rendering
+                    };
+                    this.gameMap = new GameMap(this.oceanCanvas, minimalAssets);
+                    console.log('✅ Game map initialized for ocean rendering');
+                } catch (error) {
+                    console.warn('⚠️ Could not initialize game map:', error);
+                    // Continue without ocean rendering
                 }
                 
                 this.setupCanvas();
@@ -1595,6 +1619,60 @@
                 }
             }
             
+            async saveAndApplyToGame() {
+                try {
+                    console.log('🎮 Saving and applying changes to game...');
+                    
+                    // First save to server to update js/islands-data.js
+                    await this.saveToServer();
+                    
+                    // Update the global ISLANDS_DATA variable that the game uses
+                    window.ISLANDS_DATA = this.islands.map(island => ({
+                        name: island.name,
+                        x: island.x,
+                        y: island.y,
+                        radius: island.radius || this.calculateRadiusFromCircles(island),
+                        collisionCircles: island.collisionCircles || [],
+                        imageFilename: island.imageFilename || null
+                    }));
+                    
+                    // If game map is loaded, update its islands directly
+                    if (this.gameMap) {
+                        this.gameMap.islands = this.gameMap.convertMapEditorData(window.ISLANDS_DATA);
+                        console.log('✅ Game map islands updated directly');
+                    }
+                    
+                    // Notify parent window if in iframe
+                    if (window.parent !== window) {
+                        window.parent.postMessage({
+                            type: 'islands-updated',
+                            islands: window.ISLANDS_DATA
+                        }, '*');
+                    }
+                    
+                    console.log('✅ Changes applied to game! Refresh the game window to see changes.');
+                    alert('Changes saved and applied! Refresh the game window to see the updates.');
+                    
+                } catch (error) {
+                    console.error('❌ Failed to save and apply:', error);
+                    alert('Failed to apply changes to game: ' + error.message);
+                }
+            }
+            
+            calculateRadiusFromCircles(island) {
+                if (!island.collisionCircles || island.collisionCircles.length === 0) {
+                    return 400; // Default radius
+                }
+                
+                let maxRadius = 0;
+                island.collisionCircles.forEach(circle => {
+                    const distance = Math.sqrt(circle.x * circle.x + circle.y * circle.y) + circle.radius;
+                    maxRadius = Math.max(maxRadius, distance);
+                });
+                
+                return maxRadius;
+            }
+            
             loadExistingIslands() {
                 // Try to load from existing islands-data.js file
                 if (typeof ISLANDS_DATA !== 'undefined' && Array.isArray(ISLANDS_DATA) && ISLANDS_DATA.length > 0) {
@@ -1618,9 +1696,14 @@
                             island.image = this.loadedImages.get(island.imageFilename);
                         }
                     });
+                    
+                    // Update UI with loaded islands
+                    this.updateIslandsList();
+                    this.fitWorld();
                 } else {
-                    console.log('⚠️ No existing islands found in islands-data.js, loading defaults...');
-                    this.loadDefaultData();
+                    console.log('⚠️ No existing islands found in islands-data.js, trying server...');
+                    // Try loading from server as fallback
+                    this.loadFromServer();
                 }
             }
             
@@ -1920,9 +2003,32 @@
                 // Clear canvas
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
                 
-                // Fill ocean background
-                this.ctx.fillStyle = '#1e3a5f';
-                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                // Render game ocean with waves if available
+                if (this.gameMap) {
+                    try {
+                        // Update wave animation
+                        this.gameMap.update(0.016); // ~60fps delta time
+                        
+                        // Render ocean to off-screen canvas
+                        this.gameMap.renderOcean(this.oceanCtx, -this.offsetX, -this.offsetY, 
+                                                  this.canvas.width / this.zoom, this.canvas.height / this.zoom);
+                        
+                        // Draw ocean canvas scaled to viewport
+                        this.ctx.save();
+                        this.ctx.scale(this.zoom, this.zoom);
+                        this.ctx.translate(-this.offsetX, -this.offsetY);
+                        this.ctx.drawImage(this.oceanCanvas, 0, 0);
+                        this.ctx.restore();
+                    } catch (error) {
+                        // Fallback to simple ocean
+                        this.ctx.fillStyle = '#1e3a5f';
+                        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                    }
+                } else {
+                    // Fallback ocean background
+                    this.ctx.fillStyle = '#1e3a5f';
+                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                }
                 
                 // Apply world transformations
                 this.ctx.save();

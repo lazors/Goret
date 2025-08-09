@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GORET - Map Editor Integration Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0f1a;
+            color: #ecf0f1;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .game-frame, .editor-frame {
+            flex: 1;
+            height: 100%;
+            position: relative;
+        }
+        
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .divider {
+            width: 4px;
+            background: #3498db;
+            cursor: col-resize;
+            position: relative;
+        }
+        
+        .divider::after {
+            content: '⋮';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 20px;
+        }
+        
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            text-align: center;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .header h2 {
+            font-size: 16px;
+            color: #3498db;
+            margin: 0;
+        }
+        
+        .instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #3498db;
+            z-index: 100;
+            max-width: 600px;
+            text-align: center;
+        }
+        
+        .instructions h3 {
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        
+        .instructions p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .reload-btn {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            padding: 10px 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 101;
+        }
+        
+        .reload-btn:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="game-frame">
+            <div class="header">
+                <h2>🏴‍☠️ GORET Game</h2>
+            </div>
+            <button class="reload-btn" onclick="reloadGame()">🔄 Reload Game</button>
+            <iframe id="gameFrame" src="http://localhost:8000/index.html"></iframe>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="editor-frame">
+            <div class="header">
+                <h2>🗺️ Map Editor</h2>
+            </div>
+            <iframe id="editorFrame" src="http://localhost:8000/map-editor.html"></iframe>
+        </div>
+    </div>
+    
+    <div class="instructions">
+        <h3>🎮 Map Editor Integration Test</h3>
+        <p>1. Edit islands in the Map Editor (right panel)</p>
+        <p>2. Click "Save & Apply to Game" button to update the game</p>
+        <p>3. Click "Reload Game" or refresh the game window to see changes</p>
+        <p>4. Changes are saved to js/islands-data.js automatically</p>
+    </div>
+    
+    <script>
+        // Handle divider dragging
+        const divider = document.querySelector('.divider');
+        const container = document.querySelector('.container');
+        const gameFrame = document.querySelector('.game-frame');
+        const editorFrame = document.querySelector('.editor-frame');
+        
+        let isDragging = false;
+        
+        divider.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            document.body.style.cursor = 'col-resize';
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            const containerRect = container.getBoundingClientRect();
+            const percentage = ((e.clientX - containerRect.left) / containerRect.width) * 100;
+            
+            if (percentage > 20 && percentage < 80) {
+                gameFrame.style.flex = `0 0 ${percentage}%`;
+                editorFrame.style.flex = `0 0 ${100 - percentage}%`;
+            }
+        });
+        
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            document.body.style.cursor = 'default';
+        });
+        
+        // Reload game function
+        function reloadGame() {
+            const gameIframe = document.getElementById('gameFrame');
+            gameIframe.src = gameIframe.src;
+        }
+        
+        // Listen for updates from map editor
+        window.addEventListener('message', (e) => {
+            if (e.data && e.data.type === 'islands-updated') {
+                console.log('Islands updated! You can reload the game to see changes.');
+                // Optionally auto-reload the game
+                // setTimeout(reloadGame, 500);
+            }
+        });
+        
+        // Hide instructions after 10 seconds
+        setTimeout(() => {
+            document.querySelector('.instructions').style.display = 'none';
+        }, 10000);
+    </script>
+</body>
+</html>

@@ -120,12 +120,45 @@ class GameMap {
     convertMapEditorData(mapEditorIslands) {
         // Convert map editor island format to game format
         return mapEditorIslands.map(island => {
+            // Determine which image to use based on imageFilename
+            let islandImage = null;
+            if (island.imageFilename) {
+                // Try to find dynamically loaded image
+                const imageKey = `island_${island.imageFilename}`;
+                islandImage = this.assets[imageKey];
+                
+                // Fallback to old naming convention if not found
+                if (!islandImage) {
+                    if (island.imageFilename.includes('Nevis')) {
+                        islandImage = this.assets.island2 || this.assets.island;
+                    } else if (island.imageFilename.includes('Saint_Kitts')) {
+                        islandImage = this.assets.island;
+                    }
+                }
+            }
+            
+            // Final fallback to default island image
+            if (!islandImage) {
+                islandImage = this.assets.island || this.assets.island2;
+            }
+            
+            // Calculate radius from collision circles if not provided
+            let radius = island.radius;
+            if (!radius && island.collisionCircles && island.collisionCircles.length > 0) {
+                // Find the maximum distance from center to edge of any collision circle
+                radius = 0;
+                island.collisionCircles.forEach(circle => {
+                    const distance = Math.sqrt(circle.x * circle.x + circle.y * circle.y) + circle.radius;
+                    radius = Math.max(radius, distance);
+                });
+            }
+            
             const gameIsland = {
                 x: island.x,
                 y: island.y,
-                radius: island.radius || 400,
+                radius: radius || 400,
                 name: island.name,
-                image: this.assets.island, // Default image for now
+                image: islandImage,
                 collisionCircles: []
             };
             
@@ -217,6 +250,29 @@ class GameMap {
         
         // Render islands
         this.renderIslands(ctx);
+    }
+    
+    // Special render method for map editor
+    renderOcean(ctx, offsetX, offsetY, viewWidth, viewHeight) {
+        // Set ocean background
+        const gradient = ctx.createLinearGradient(0, 0, 0, this.height);
+        gradient.addColorStop(0, '#0a4f7a');
+        gradient.addColorStop(0.5, '#0d5e8f');
+        gradient.addColorStop(1, '#0f6ba5');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, this.width, this.height);
+        
+        // Render animated wave layers
+        this.renderWaveLayers(ctx);
+    }
+    
+    // Method to update islands from map editor
+    updateIslands(newIslands) {
+        if (newIslands && Array.isArray(newIslands)) {
+            console.log('🔄 Updating islands from map editor...');
+            this.islands = this.convertMapEditorData(newIslands);
+            console.log(`✅ Updated ${this.islands.length} islands`);
+        }
     }
     
     renderWaveLayers(ctx) {
