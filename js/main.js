@@ -36,7 +36,7 @@ class Game {
         
         // Zoom system
         this.zoom = 1.0;
-        this.minZoom = 0.3;
+        this.minZoom = 0.0;
         this.maxZoom = 3.0;
         this.zoomSpeed = 0.1;
         this.targetZoom = 1.0;

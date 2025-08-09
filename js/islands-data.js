@@ -30,7 +30,7 @@ const ISLANDS_DATA = [
     "name": "Nevis Island",
     "x": 4500,
     "y": 3000,
-    "radius": 400,
+    "radius": 600,
     "collisionCircles": [
       {
         "x": 0,
