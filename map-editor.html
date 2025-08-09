@@ -566,6 +566,7 @@
         </div>
     </div>
 
+    <script src="js/islands-data.js"></script>
     <script>
         class MapEditor {
             constructor() {
@@ -629,6 +630,7 @@
                 this.setupEventListeners();
                 this.startRenderLoop();
                 await this.loadAvailablePNGs();
+                this.loadExistingIslands();
                 this.updateUI();
                 console.log('✅ Map Editor ready!');
             }
@@ -1590,6 +1592,35 @@
                     console.log(`❌ Failed to save to server: ${error.message}`);
                     // Fallback to local JSON export
                     this.exportJSON();
+                }
+            }
+            
+            loadExistingIslands() {
+                // Try to load from existing islands-data.js file
+                if (typeof ISLANDS_DATA !== 'undefined' && Array.isArray(ISLANDS_DATA) && ISLANDS_DATA.length > 0) {
+                    console.log('🏝️ Loading existing islands from islands-data.js...');
+                    this.islands = ISLANDS_DATA.map(island => ({
+                        name: island.name,
+                        x: island.x,
+                        y: island.y,
+                        radius: island.radius || 400, // fallback radius
+                        scale: 1.0,
+                        imageFilename: island.imageFilename,
+                        image: null, // will be loaded by loadIslandImage
+                        collisionCircles: island.collisionCircles || [{ x: 0, y: 0, radius: island.radius || 400 }]
+                    }));
+                    
+                    console.log(`✅ Loaded ${this.islands.length} islands from islands-data.js: ${this.islands.map(i => i.name).join(', ')}`);
+                    
+                    // Set image references for each island from loaded images
+                    this.islands.forEach(island => {
+                        if (island.imageFilename && this.loadedImages.has(island.imageFilename)) {
+                            island.image = this.loadedImages.get(island.imageFilename);
+                        }
+                    });
+                } else {
+                    console.log('⚠️ No existing islands found in islands-data.js, loading defaults...');
+                    this.loadDefaultData();
                 }
             }
             

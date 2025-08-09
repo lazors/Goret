@@ -1,45 +1,44 @@
-[
-  {
-    "name": "Saint Kitts Island",
-    "x": 2000,
-    "y": 1500,
-    "radius": 600,
-    "collisionCircles": [
-      {
-        "x": 0,
-        "y": 0,
-        "radius": 280
-      },
-      {
-        "x": -160,
-        "y": -155,
-        "radius": 120
-      },
-      {
-        "x": 140,
-        "y": 145,
-        "radius": 100
-      }
-    ],
-    "imageFilename": "Saint_Kitts.png"
-  },
-  {
-    "name": "Nevis Island",
-    "x": 4500,
-    "y": 3000,
-    "radius": 400,
-    "collisionCircles": [
-      {
-        "x": 0,
-        "y": 0,
-        "radius": 180
-      },
-      {
-        "x": -80,
-        "y": -60,
-        "radius": 80
-      }
-    ],
-    "imageFilename": "Nevis.png"
-  }
-]
+{
+  "islands": [
+    {
+      "name": "Saint Kitts Island",
+      "x": 2000,
+      "y": 1500,
+      "scale": 1,
+      "imageFilename": "Saint_Kitts.png",
+      "collisionCircles": [
+        {
+          "x": -204.98590171591422,
+          "y": 66.08840298994346,
+          "radius": 280
+        },
+        {
+          "x": -160,
+          "y": -155,
+          "radius": 120
+        }
+      ]
+    },
+    {
+      "name": "Nevis Island",
+      "x": 4500,
+      "y": 3000,
+      "scale": 1,
+      "imageFilename": "Nevis.png",
+      "collisionCircles": [
+        {
+          "x": -214.38903255968853,
+          "y": 307.23515042438703,
+          "radius": 180
+        },
+        {
+          "x": -80,
+          "y": -60,
+          "radius": 80
+        }
+      ]
+    }
+  ],
+  "worldWidth": 10240,
+  "worldHeight": 7680
+}
