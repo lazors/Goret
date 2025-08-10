@@ -107,7 +107,7 @@ export class InputHandler {
                     const deltaX = mouse.x - mouse.lastX;
                     const deltaY = mouse.y - mouse.lastY;
                     
-                    this.editor.viewportController.handlePan(-deltaX, -deltaY);
+                    this.editor.viewportController.handlePan(deltaX, deltaY);
                 }
             }
         }
