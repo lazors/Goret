@@ -50,13 +50,13 @@ export class ViewportController {
     }
     
     /**
-     * Reset view to default zoom and position
+     * Reset view to default zoom and position (centered on ship start position)
      */
     resetView() {
-        this.editor.zoom = 0.08;
-        this.editor.offsetX = 0;
-        this.editor.offsetY = 0;
-        this.editor.render();
+        this.editor.zoom = 1.0;
+        const shipStartX = 1000; // Ship starts at (1000, 1000) in game
+        const shipStartY = 1000;
+        this.centerOn(shipStartX, shipStartY);
     }
     
     /**

@@ -41,8 +41,8 @@ export class MapEditor {
         this.oceanCanvas.width = this.worldWidth;
         this.oceanCanvas.height = this.worldHeight;
         
-        // Viewport settings
-        this.zoom = 0.08;
+        // Viewport settings - match game initial zoom
+        this.zoom = 1.0;
         this.offsetX = 0;
         this.offsetY = 0;
         this.minZoom = 0.02;
@@ -126,6 +126,9 @@ export class MapEditor {
         // Update UI
         this.uiManager.updateAll();
         
+        // Center on ship starting position to match game view
+        this.centerOnShipStartPosition();
+        
         console.log('✅ Map Editor ready!');
     }
     
@@ -174,6 +177,16 @@ export class MapEditor {
         this.selectedCircle = circle;
         this.collisionManager.onCircleSelected(circle);
         this.uiManager.updateCircleProperties(circle);
+    }
+    
+    /**
+     * Center viewport on ship starting position to match game initial view
+     */
+    centerOnShipStartPosition() {
+        const shipStartX = 1000; // Ship starts at (1000, 1000) in game
+        const shipStartY = 1000;
+        
+        this.viewportController.centerOn(shipStartX, shipStartY);
     }
     
     /**

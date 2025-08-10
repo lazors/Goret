@@ -203,26 +203,25 @@ export class RenderEngine {
         const isSelected = island === this.editor.selectedIsland;
         
         if (island.image) {
-            // Draw PNG image
+            // Draw PNG image using square scaling based on radius (matches game rendering)
             ctx.save();
             ctx.translate(island.x, island.y);
             
-            const scale = island.scale || 1.0;
-            const width = island.image.width * scale;
-            const height = island.image.height * scale;
+            // Use radius-based sizing like the game does
+            const size = island.radius * 2;
             
-            // Draw island PNG centered
-            ctx.drawImage(island.image, -width/2, -height/2, width, height);
+            // Draw island PNG centered and scaled to square size
+            ctx.drawImage(island.image, -size/2, -size/2, size, size);
             
             // Draw selection indicator
             if (isSelected) {
                 ctx.strokeStyle = '#ff4757';
                 ctx.lineWidth = 4 / zoom;
                 ctx.strokeRect(
-                    -width/2 - 5/zoom, 
-                    -height/2 - 5/zoom,
-                    width + 10/zoom, 
-                    height + 10/zoom
+                    -size/2 - 5/zoom, 
+                    -size/2 - 5/zoom,
+                    size + 10/zoom, 
+                    size + 10/zoom
                 );
             }
             
