@@ -27,22 +27,42 @@ The GORET Map Editor has been **completely modernized** to use a **Multi-Circle 
 ```
 js/map-editor/
 ├── CLAUDE.md                    # This documentation file
-├── AdvancedMapEditor.js        # Legacy advanced editor (kept for reference)
-├── OptimizedMapEditor.js       # Performance optimizations
-├── performance-test.js         # Testing framework
-└── TestingFramework.js         # Unit tests
+├── MapEditor.js                 # Main editor class that coordinates all modules
+├── IslandManager.js             # Manages island creation, selection, and properties
+├── CollisionCircleManager.js    # Handles collision circle operations
+├── ToolManager.js               # Manages editor tools and interactions
+├── RenderEngine.js              # Handles all rendering operations
+├── ViewportController.js        # Controls camera, zoom, and panning
+├── InputHandler.js              # Manages mouse and keyboard input
+├── DataManager.js               # Handles loading, saving, import/export
+├── UIManager.js                 # Manages all UI updates and interactions
+└── PNGAssetManager.js           # Manages PNG asset loading and processing
 ```
 
-**Note**: All collision editor files have been **REMOVED**:
-- ~~EnhancedCollisionEditor.js~~ (deleted)
-- ~~ResizeRotateHandlers.js~~ (deleted)
+**Important**: The JavaScript code has been **completely modularized** and extracted from the HTML file into separate ES6 modules for better maintainability and organization.
 
 ## Main Entry Point
 
 **Primary Editor**: `/map-editor.html` (root level)
-- Self-contained HTML file with embedded Multi-Circle editor
-- No external dependencies from this folder
+- HTML file that loads modular JavaScript files from `js/map-editor/`
+- Uses ES6 modules for better code organization
+- MapEditorUIBridge class provides compatibility layer for HTML onclick handlers
 - Direct replacement for old world-builder-advanced.html
+
+### Module Architecture
+
+The map editor is now built with a modular architecture:
+
+1. **MapEditor.js** - Central coordinator that initializes and manages all modules
+2. **IslandManager.js** - All island-related operations
+3. **CollisionCircleManager.js** - Circle creation, editing, optimization
+4. **ToolManager.js** - Tool switching and tool-specific actions
+5. **RenderEngine.js** - Canvas rendering and animation loop
+6. **ViewportController.js** - Camera control and viewport management
+7. **InputHandler.js** - Mouse/keyboard event handling
+8. **DataManager.js** - Server communication and data persistence
+9. **UIManager.js** - DOM updates and UI state management
+10. **PNGAssetManager.js** - PNG loading and image processing
 
 ## Game Integration Workflow
 
@@ -147,6 +167,40 @@ island.collisionCircles = [/* array of circles */]
 | **Edit Complexity** | Very difficult | Very easy |
 | **Debug Visibility** | Poor | Excellent |
 
+## Code Organization Guidelines
+
+### Module Responsibilities
+
+Each module has a specific responsibility:
+
+- **MapEditor**: Main coordinator, initializes modules, manages global state
+- **IslandManager**: Island CRUD operations, validation, property management
+- **CollisionCircleManager**: Circle CRUD, optimization, PNG analysis
+- **ToolManager**: Tool state, tool-specific click/drag handlers
+- **RenderEngine**: All canvas drawing, render loop, performance monitoring
+- **ViewportController**: Zoom, pan, world-to-screen coordinate conversion
+- **InputHandler**: Event listeners, keyboard shortcuts, mouse tracking
+- **DataManager**: Server API, JSON import/export, data persistence
+- **UIManager**: DOM manipulation, UI state updates, form handling
+- **PNGAssetManager**: Image loading, caching, PNG preview
+
+### Adding New Features
+
+When adding new features:
+
+1. Identify which module(s) should handle the feature
+2. Add methods to the appropriate module
+3. If UI interaction needed, add bridge method to MapEditorUIBridge in map-editor.html
+4. Update this documentation
+
+### Code Style
+
+- Use ES6 module syntax (`import`/`export`)
+- Each module is a class with clear methods
+- Comments explain complex logic
+- Methods are documented with JSDoc comments
+- No inline JavaScript in HTML (use MapEditorUIBridge)
+
 ## Development Workflow
 
 ### Adding New Islands
@@ -227,16 +281,26 @@ mapEditor.optimizeCircles();    // Merge overlapping circles
 
 ## Migration Notes
 
-### Files Removed:
+### Recent Refactoring (Current):
+- **Extracted all JavaScript** from `map-editor.html` into separate module files
+- **Created modular architecture** with 10 specialized modules
+- **Implemented ES6 modules** for better code organization
+- **Added MapEditorUIBridge** for backward compatibility with HTML onclick handlers
+
+### Files Removed (Historical):
 - `js/collision-editor.js` - Old polygon editor
 - `collision-editor-guide.html` - Documentation
+- `js/map-editor/AdvancedMapEditor.js` - Legacy advanced editor (35k+ lines)
+- `js/map-editor/OptimizedMapEditor.js` - Legacy optimizations
+- `js/map-editor/TestingFramework.js` - Test framework
+- `js/map-editor/performance-test.js` - Performance testing
 - `js/map-editor/EnhancedCollisionEditor.js` - Complex collision tools
 - `js/map-editor/ResizeRotateHandlers.js` - Rotation tools
 
 ### Files Modified:
 - `js/collision.js` - **Complete rewrite** for Multi-Circle system
 - `js/map.js` - **Updated** to support `collisionCircles` format
-- `map-editor.html` - **New** Multi-Circle visual editor
+- `map-editor.html` - **Refactored** to use external JavaScript modules
 
 ## Future Enhancements
 
