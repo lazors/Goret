@@ -652,9 +652,15 @@
                     </div>
                 </div>
                 
-                <div class="input-group">
-                    <label>Visual Scale:</label>
-                    <input type="number" id="islandScale" placeholder="Scale" step="0.1" onchange="MapEditorUIBridge.updateSelectedIsland()">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="input-group">
+                        <label>Visual Scale:</label>
+                        <input type="number" id="islandScale" placeholder="Scale" step="0.1" onchange="MapEditorUIBridge.updateSelectedIsland()">
+                    </div>
+                    <div class="input-group">
+                        <label>Rotation (deg):</label>
+                        <input type="number" id="islandRotation" placeholder="0" step="5" onchange="MapEditorUIBridge.updateSelectedIsland()">
+                    </div>
                 </div>
                 
                 <button class="btn btn-primary" onclick="MapEditorUIBridge.updateSelectedIsland()">
