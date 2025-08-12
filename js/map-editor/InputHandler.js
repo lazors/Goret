@@ -238,13 +238,6 @@ export class InputHandler {
                 }
                 break;
                 
-            // Save shortcut
-            case 'KeyS':
-                if (event.ctrlKey) {
-                    event.preventDefault();
-                    this.editor.dataManager.saveToServer();
-                }
-                break;
         }
     }
     

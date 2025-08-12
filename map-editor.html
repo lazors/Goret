@@ -453,24 +453,8 @@
             }
             
             // Data Management
-            static loadFromServer() {
-                if (window.mapEditor) mapEditor.dataManager.loadFromServer();
-            }
-            
-            static saveToServer() {
-                if (window.mapEditor) mapEditor.dataManager.saveToServer();
-            }
-            
             static saveAndApplyToGame() {
                 if (window.mapEditor) mapEditor.dataManager.saveAndApplyToGame();
-            }
-            
-            static importJSON() {
-                if (window.mapEditor) mapEditor.dataManager.importJSON();
-            }
-            
-            static exportJSON() {
-                if (window.mapEditor) mapEditor.dataManager.exportJSON();
             }
             
             // Debug
@@ -559,20 +543,8 @@
             <!-- World Management -->
             <div class="section">
                 <div class="section-title">🌍 World Management</div>
-                <button class="btn btn-success" onclick="MapEditorUIBridge.loadFromServer()">
-                    📥 Load from Server
-                </button>
-                <button class="btn btn-warning" onclick="MapEditorUIBridge.saveToServer()">
-                    💾 Save to Server
-                </button>
                 <button class="btn btn-danger" onclick="MapEditorUIBridge.saveAndApplyToGame()">
                     🎮 Save & Apply to Game
-                </button>
-                <button class="btn btn-primary" onclick="MapEditorUIBridge.importJSON()">
-                    📂 Import JSON
-                </button>
-                <button class="btn btn-primary" onclick="MapEditorUIBridge.exportJSON()">
-                    📤 Export JSON
                 </button>
             </div>
 

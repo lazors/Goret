@@ -13,37 +13,6 @@ export class DataManager {
         this.serverUrl = 'http://localhost:8001';
     }
     
-    /**
-     * Load islands from server
-     */
-    async loadFromServer() {
-        try {
-            console.log('📥 Loading islands from server...');
-            const response = await fetch(`${this.serverUrl}/api/islands/load`);
-            
-            if (!response.ok) {
-                throw new Error(`Server responded with ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            // Process loaded islands
-            if (data.islands) {
-                this.editor.islands = await this.processLoadedIslands(data.islands);
-            } else {
-                this.editor.islands = [];
-            }
-            
-            console.log(`✅ Loaded ${this.editor.islands.length} islands from server`);
-            this.editor.uiManager.updateIslandsList();
-            this.editor.viewportController.fitWorld();
-            
-        } catch (error) {
-            console.log(`❌ Failed to load from server: ${error.message}`);
-            // Load default data as fallback
-            this.loadDefaultData();
-        }
-    }
     
     /**
      * Process loaded islands data
@@ -71,14 +40,15 @@ export class DataManager {
         }));
     }
     
+    
     /**
-     * Save islands to server
+     * Save and apply changes to the game
      */
-    async saveToServer() {
+    async saveAndApplyToGame() {
         try {
-            console.log('💾 Saving islands to server...');
+            console.log('🎮 Saving and applying changes to game...');
             
-            // Prepare islands data (exclude image objects for serialization)
+            // Save islands data to update js/islands-data.js
             const islandsData = this.prepareIslandsForSave();
             
             const data = {
@@ -98,27 +68,6 @@ export class DataManager {
             if (!response.ok) {
                 throw new Error(`Server responded with ${response.status}`);
             }
-            
-            const result = await response.json();
-            console.log(`✅ Successfully saved ${this.editor.islands.length} islands to server`);
-            alert('Islands saved successfully!');
-            
-        } catch (error) {
-            console.log(`❌ Failed to save to server: ${error.message}`);
-            // Fallback to local JSON export
-            this.exportJSON();
-        }
-    }
-    
-    /**
-     * Save and apply changes to the game
-     */
-    async saveAndApplyToGame() {
-        try {
-            console.log('🎮 Saving and applying changes to game...');
-            
-            // First save to server to update js/islands-data.js
-            await this.saveToServer();
             
             // Update the global ISLANDS_DATA variable that the game uses
             window.ISLANDS_DATA = this.prepareIslandsForGame();
@@ -224,9 +173,9 @@ export class DataManager {
             this.editor.uiManager.updateIslandsList();
             this.editor.viewportController.fitWorld();
         } else {
-            console.log('⚠️ No existing islands found in islands-data.js, trying server...');
-            // Try loading from server as fallback
-            this.loadFromServer();
+            console.log('⚠️ No existing islands found in islands-data.js, loading defaults...');
+            // Load default data as fallback
+            this.loadDefaultData();
         }
     }
     
@@ -271,72 +220,7 @@ export class DataManager {
         this.editor.viewportController.fitWorld();
     }
     
-    /**
-     * Import islands from JSON file
-     */
-    importJSON() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    this.editor.islands = data.islands || data || [];
-                    
-                    // Load images for imported islands
-                    this.editor.islands.forEach(island => {
-                        if (island.imageFilename) {
-                            island.image = this.editor.pngAssetManager.getLoadedImage(island.imageFilename);
-                        }
-                    });
-                    
-                    this.editor.uiManager.updateIslandsList();
-                    this.editor.viewportController.fitWorld();
-                    console.log(`📂 Imported ${this.editor.islands.length} islands from JSON`);
-                } catch (error) {
-                    console.log(`❌ Failed to import JSON: ${error.message}`);
-                    alert('❌ Failed to import JSON file. Please check the file format.');
-                }
-            };
-            reader.readAsText(file);
-        };
-        
-        input.click();
-    }
     
-    /**
-     * Export islands to JSON file
-     */
-    exportJSON() {
-        // Prepare data for export
-        const exportData = {
-            worldWidth: this.editor.worldWidth,
-            worldHeight: this.editor.worldHeight,
-            islands: this.prepareIslandsForSave(),
-            exportedAt: new Date().toISOString(),
-            version: this.editor.version,
-            collisionSystem: 'PNG-Based-Multi-Circle'
-        };
-        
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `goret-world-png-multicircle-${Date.now()}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        console.log(`📤 Exported world data to JSON (${this.editor.islands.length} islands)`);
-    }
     
     /**
      * Validate world data for issues
