@@ -149,6 +149,10 @@ export class UIManager {
         document.getElementById('islandY').value = Math.round(island.y);
         document.getElementById('islandScale').value = island.scale || 1.0;
         
+        // Convert rotation from radians to degrees for display
+        const rotationDegrees = ((island.rotation || 0) * 180 / Math.PI) % 360;
+        document.getElementById('islandRotation').value = Math.round(rotationDegrees);
+        
         // Update image selector
         const imageSelector = document.getElementById('islandImageSelector');
         imageSelector.value = island.imageFilename || '';
@@ -213,11 +217,16 @@ export class UIManager {
      * @returns {Object} Island properties
      */
     getIslandPropertiesFromUI() {
+        // Convert rotation from degrees to radians
+        const rotationDegrees = parseFloat(document.getElementById('islandRotation').value) || 0;
+        const rotationRadians = rotationDegrees * Math.PI / 180;
+        
         return {
             name: document.getElementById('islandName').value,
             x: document.getElementById('islandX').value,
             y: document.getElementById('islandY').value,
-            scale: document.getElementById('islandScale').value
+            scale: document.getElementById('islandScale').value,
+            rotation: rotationRadians
         };
     }
     

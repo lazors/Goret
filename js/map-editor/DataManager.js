@@ -59,6 +59,9 @@ export class DataManager {
                 delete island.collision;
             }
             
+            // Ensure scale is always 1.0 when loading (radius should already be the effective size)
+            island.scale = 1.0;
+            
             // Load island image if specified
             if (island.imageFilename) {
                 island.image = this.editor.pngAssetManager.getLoadedImage(island.imageFilename);
@@ -149,14 +152,22 @@ export class DataManager {
      * @returns {Array} Islands data ready for serialization
      */
     prepareIslandsForSave() {
-        return this.editor.islands.map(island => ({
-            name: island.name,
-            x: island.x,
-            y: island.y,
-            scale: island.scale || 1.0,
-            imageFilename: island.imageFilename || null,
-            collisionCircles: island.collisionCircles || []
-        }));
+        return this.editor.islands.map(island => {
+            // Calculate the effective radius (base radius * scale)
+            const baseRadius = island.radius || (island.image ? Math.max(island.image.width, island.image.height) / 2 : 200);
+            const effectiveRadius = baseRadius * (island.scale || 1.0);
+            
+            return {
+                name: island.name,
+                x: island.x,
+                y: island.y,
+                radius: effectiveRadius,  // Save the scaled radius as the new base radius
+                scale: 1.0,  // Reset scale to 1.0 since we've baked it into the radius
+                rotation: island.rotation || 0,
+                imageFilename: island.imageFilename || null,
+                collisionCircles: island.collisionCircles || []
+            };
+        });
     }
     
     /**
@@ -165,14 +176,20 @@ export class DataManager {
      * @returns {Array} Islands data for game
      */
     prepareIslandsForGame() {
-        return this.editor.islands.map(island => ({
-            name: island.name,
-            x: island.x,
-            y: island.y,
-            radius: island.radius || this.editor.islandManager.calculateRadiusFromCircles(island),
-            collisionCircles: island.collisionCircles || [],
-            imageFilename: island.imageFilename || null
-        }));
+        return this.editor.islands.map(island => {
+            // Calculate the effective radius (base radius * scale)
+            const baseRadius = island.radius || this.editor.islandManager.calculateRadiusFromCircles(island);
+            const effectiveRadius = baseRadius * (island.scale || 1.0);
+            
+            return {
+                name: island.name,
+                x: island.x,
+                y: island.y,
+                radius: effectiveRadius,  // Use the scaled radius for the game
+                collisionCircles: island.collisionCircles || [],
+                imageFilename: island.imageFilename || null
+            };
+        });
     }
     
     /**

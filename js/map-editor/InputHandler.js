@@ -78,6 +78,14 @@ export class InputHandler {
         
         this.editor.updateWorldMouse();
         
+        // Try island transform first if in select mode
+        if (this.editor.currentTool === 'select' && this.editor.selectedIsland) {
+            if (this.editor.islandTransform.startDrag(mouse.worldX, mouse.worldY, this.editor.selectedIsland)) {
+                this.editor.render();
+                return;
+            }
+        }
+        
         // Handle tool-specific actions
         this.editor.toolManager.processToolClick();
         
@@ -97,10 +105,23 @@ export class InputHandler {
         
         this.editor.updateWorldMouse();
         
+        // Update cursor based on transform handles
+        if (this.editor.currentTool === 'select' && this.editor.selectedIsland && !mouse.isDown) {
+            const cursor = this.editor.islandTransform.getCursor(mouse.worldX, mouse.worldY, this.editor.selectedIsland);
+            this.editor.canvas.style.cursor = cursor;
+        }
+        
         // Handle dragging
         if (mouse.isDown) {
-            // Try tool-specific drag first
-            if (!this.editor.toolManager.handleToolDrag()) {
+            // Try island transform first
+            if (this.editor.islandTransform.isTransforming()) {
+                if (this.editor.islandTransform.updateDrag(mouse.worldX, mouse.worldY, this.editor.selectedIsland)) {
+                    this.editor.render();
+                    this.editor.uiManager.updateIslandProperties();
+                }
+            }
+            // Try tool-specific drag
+            else if (!this.editor.toolManager.handleToolDrag()) {
                 // If tool doesn't handle drag, pan viewport
                 if (this.editor.currentTool === 'select') {
                     mouse.isDragging = true;
@@ -124,6 +145,15 @@ export class InputHandler {
     onMouseUp(event) {
         this.editor.mouse.isDown = false;
         this.editor.mouse.isDragging = false;
+        
+        // End any ongoing transform
+        if (this.editor.islandTransform.endDrag()) {
+            this.editor.render();
+            this.editor.uiManager.updateIslandProperties();
+        }
+        
+        // Reset cursor
+        this.editor.canvas.style.cursor = 'crosshair';
     }
     
     /**

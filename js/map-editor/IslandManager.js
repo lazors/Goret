@@ -23,7 +23,9 @@ export class IslandManager {
             name: `Island ${this.editor.islands.length + 1}`,
             x: x,
             y: y,
+            radius: 400,  // Default radius for new islands
             scale: 1.0,
+            rotation: 0,
             imageFilename: null,
             image: null,
             collisionCircles: [
@@ -53,7 +55,9 @@ export class IslandManager {
             name: pngFilename.replace('.png', '').replace('_', ' '),
             x: this.editor.worldWidth / 2,
             y: this.editor.worldHeight / 2,
+            radius: Math.max(image.width, image.height) / 2,  // Calculate radius from image size
             scale: 1.0,
+            rotation: 0,
             imageFilename: pngFilename,
             image: image,
             collisionCircles: []
@@ -99,6 +103,7 @@ export class IslandManager {
         if (properties.x !== undefined) island.x = parseFloat(properties.x) || 0;
         if (properties.y !== undefined) island.y = parseFloat(properties.y) || 0;
         if (properties.scale !== undefined) island.scale = parseFloat(properties.scale) || 1.0;
+        if (properties.rotation !== undefined) island.rotation = properties.rotation;
         
         console.log(`Updated island: ${island.name}`);
     }

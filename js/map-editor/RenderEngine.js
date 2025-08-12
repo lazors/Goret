@@ -68,6 +68,16 @@ export class RenderEngine {
         }
         
         ctx.restore();
+        
+        // Draw transform handles for selected island (on top of everything)
+        if (this.editor.selectedIsland && this.editor.currentTool === 'select') {
+            const viewport = {
+                x: this.editor.offsetX,
+                y: this.editor.offsetY,
+                zoom: this.editor.zoom
+            };
+            this.editor.islandTransform.renderTransformHandles(ctx, this.editor.selectedIsland, viewport);
+        }
     }
     
     /**
@@ -207,14 +217,24 @@ export class RenderEngine {
             ctx.save();
             ctx.translate(island.x, island.y);
             
-            // Use radius-based sizing like the game does
-            const size = island.radius * 2;
+            // Apply rotation if present
+            if (island.rotation) {
+                ctx.rotate(island.rotation);
+            }
             
-            // Draw island PNG centered and scaled to square size
+            // Apply scale if present (default to 1.0)
+            const scale = island.scale || 1.0;
+            
+            // Use radius-based sizing like the game does
+            // If island has a radius, use it; otherwise calculate from image
+            const baseSize = island.radius ? island.radius * 2 : Math.max(island.image.width, island.image.height);
+            const size = baseSize * scale;
+            
+            // Draw island PNG centered and scaled to square size (matching game)
             ctx.drawImage(island.image, -size/2, -size/2, size, size);
             
-            // Draw selection indicator
-            if (isSelected) {
+            // Draw selection indicator (don't draw here if transform handles are active)
+            if (isSelected && this.editor.currentTool !== 'select') {
                 ctx.strokeStyle = '#ff4757';
                 ctx.lineWidth = 4 / zoom;
                 ctx.strokeRect(
@@ -262,10 +282,11 @@ export class RenderEngine {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        // Calculate text position
-        const textY = island.image ? 
-            island.y - (island.image.height * (island.scale || 1.0)) / 2 - 10 / zoom :
-            island.y - 200 - 10 / zoom;
+        // Calculate text position using radius-based sizing
+        const baseSize = island.radius ? island.radius * 2 : 
+            (island.image ? Math.max(island.image.width, island.image.height) : 400);
+        const size = baseSize * (island.scale || 1.0);
+        const textY = island.y - size / 2 - 10 / zoom;
         
         // Measure text
         const textMetrics = ctx.measureText(island.name);
