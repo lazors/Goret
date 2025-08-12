@@ -187,7 +187,7 @@ export class InputHandler {
                 this.editor.viewportController.resetView();
                 break;
                 
-            case 'F12':
+            case 'F3':
                 event.preventDefault();
                 this.toggleDebugMode();
                 break;

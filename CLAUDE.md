@@ -100,7 +100,7 @@ The map editor now uses a simplified Multi-Circle collision system instead of co
 
 - **Movement**: Arrow keys or WASD
 - **Pause**: Esc
-- **Debug Mode**: F12 (shows FPS, collision radii, ship info)
+- **Debug Mode**: F3 (shows FPS, collision radii, ship info)
 - **Zoom**: Mouse wheel or +/- keys
 - **Reset Zoom**: 0 key
 - **Enter Town**: Enter key (when near town area)

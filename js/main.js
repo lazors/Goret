@@ -150,8 +150,8 @@ class Game {
                 this.togglePause();
             }
             
-            // Debug mode toggle on F12 or F10
-            if (e.code === 'F12' || e.code === 'F10') {
+            // Debug mode toggle on F3
+            if (e.code === 'F3') {
                 e.preventDefault();
                 window.DEBUG_MODE = !window.DEBUG_MODE;
                 console.log('🔧 Debug mode:', window.DEBUG_MODE ? 'ON' : 'OFF');

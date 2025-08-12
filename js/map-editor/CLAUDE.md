@@ -154,7 +154,7 @@ island.collisionCircles = [/* array of circles */]
 - **Optimization**: Merge overlapping circles automatically
 
 ### Debug Features
-- **F12**: Toggle debug mode showing all collision circles
+- **F3**: Toggle debug mode showing all collision circles
 - **Validation**: Check for world issues
 - **Performance Monitor**: FPS and object counts
 
@@ -222,7 +222,7 @@ When adding new features:
 1. **Save changes** in map editor (critical step!)
 2. Open `http://localhost:8000/index.html` in new tab
 3. Navigate ship to edited islands to test collision
-4. Press F12 in game to see collision circles in debug mode
+4. Press F3 in game to see collision circles in debug mode
 5. Return to map editor to refine if needed
 
 ### 🚨 **IMPORTANT**: Always use "Save to Server" for changes to appear in game!
