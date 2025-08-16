@@ -25,6 +25,9 @@ export class CollisionCircleManager {
             return null;
         }
         
+        // Save state before adding circle
+        this.editor.undoManager.saveState('add collision circle');
+        
         const newCircle = {
             x: x,
             y: y,
@@ -49,6 +52,9 @@ export class CollisionCircleManager {
     deleteCircle(island, circle) {
         if (!island || !circle) return;
         
+        // Save state before deleting circle
+        this.editor.undoManager.saveState('delete collision circle');
+        
         const index = island.collisionCircles.indexOf(circle);
         if (index > -1) {
             island.collisionCircles.splice(index, 1);
@@ -63,6 +69,9 @@ export class CollisionCircleManager {
      */
     updateCircle(circle, properties) {
         if (!circle) return;
+        
+        // Save state before updating circle
+        this.editor.undoManager.saveState('update collision circle');
         
         if (properties.x !== undefined) circle.x = parseFloat(properties.x) || 0;
         if (properties.y !== undefined) circle.y = parseFloat(properties.y) || 0;
@@ -99,6 +108,9 @@ export class CollisionCircleManager {
      * @param {Object} island - Island to generate circles for
      */
     generateCirclesForIsland(island) {
+        // Save state before generating circles
+        this.editor.undoManager.saveState('auto-generate collision circles');
+        
         if (!island.image) {
             // Fallback: single circle
             island.collisionCircles = [{ x: 0, y: 0, radius: 200 }];

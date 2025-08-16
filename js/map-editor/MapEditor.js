@@ -18,6 +18,7 @@ import { PNGAssetManager } from './PNGAssetManager.js';
 import { ViewportController } from './ViewportController.js';
 import { InputHandler } from './InputHandler.js';
 import { IslandTransform } from './IslandTransform.js';
+import { UndoManager } from './UndoManager.js';
 
 export class MapEditor {
     constructor() {
@@ -91,6 +92,7 @@ export class MapEditor {
         this.viewportController = new ViewportController(this);
         this.inputHandler = new InputHandler(this);
         this.islandTransform = new IslandTransform(this);
+        this.undoManager = new UndoManager(this);
     }
     
     /**

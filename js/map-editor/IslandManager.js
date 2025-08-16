@@ -19,6 +19,9 @@ export class IslandManager {
      * @returns {Object} The newly created island
      */
     addIsland(x, y) {
+        // Save state before adding island
+        this.editor.undoManager.saveState('add island');
+        
         const newIsland = {
             name: `Island ${this.editor.islands.length + 1}`,
             x: x,
@@ -45,6 +48,9 @@ export class IslandManager {
      * @returns {Object} The newly created island
      */
     addIslandFromPNG(pngFilename) {
+        // Save state before adding island
+        this.editor.undoManager.saveState('add island from PNG');
+        
         const image = this.editor.pngAssetManager.getLoadedImage(pngFilename);
         if (!image) {
             alert('PNG image not loaded properly');
@@ -77,6 +83,9 @@ export class IslandManager {
      * @param {Object} island - Island to delete
      */
     deleteIsland(island) {
+        // Save state before deleting island
+        this.editor.undoManager.saveState('delete island');
+        
         const index = this.editor.islands.indexOf(island);
         if (index > -1) {
             const islandName = island.name;
@@ -97,6 +106,9 @@ export class IslandManager {
      */
     updateIslandProperties(island, properties) {
         if (!island) return;
+        
+        // Save state before updating properties
+        this.editor.undoManager.saveState('update island properties');
         
         // Update properties
         if (properties.name !== undefined) island.name = properties.name;

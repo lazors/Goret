@@ -146,6 +146,11 @@ export class InputHandler {
         this.editor.mouse.isDown = false;
         this.editor.mouse.isDragging = false;
         
+        // Reset circle dragging flag in ToolManager
+        if (this.editor.toolManager.isDraggingCircle) {
+            this.editor.toolManager.isDraggingCircle = false;
+        }
+        
         // End any ongoing transform
         if (this.editor.islandTransform.endDrag()) {
             this.editor.render();
@@ -194,6 +199,13 @@ export class InputHandler {
                 
             case 'Delete':
                 this.handleDelete();
+                break;
+                
+            case 'KeyZ':
+                if (event.ctrlKey) {
+                    event.preventDefault();
+                    this.handleUndo();
+                }
                 break;
                 
             // Tool shortcuts
@@ -279,6 +291,18 @@ export class InputHandler {
                 this.editor.uiManager.updateIslandsList();
                 this.editor.render();
             }
+        }
+    }
+    
+    /**
+     * Handle undo action (Ctrl+Z)
+     */
+    handleUndo() {
+        if (this.editor.undoManager.canUndo()) {
+            this.editor.undoManager.undo();
+            console.log('↩️ Undo performed');
+        } else {
+            console.log('⚠️ Nothing to undo');
         }
     }
     

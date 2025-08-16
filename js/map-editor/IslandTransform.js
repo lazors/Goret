@@ -109,6 +109,8 @@ export class IslandTransform {
         const hotCorner = this.checkHotCorner(worldX, worldY, island);
         
         if (hotCorner === 'rotate') {
+            // Save state before starting rotation
+            this.mapEditor.undoManager.saveState('rotate island');
             this.isRotating = true;
             const dx = worldX - island.x;
             const dy = worldY - island.y;
@@ -116,6 +118,8 @@ export class IslandTransform {
             this.rotationStartIslandAngle = island.rotation || 0;
             return true;
         } else if (hotCorner) {
+            // Save state before starting resize
+            this.mapEditor.undoManager.saveState('resize island');
             this.isResizing = true;
             this.activeHotCorner = hotCorner;
             this.resizeStartScale = island.scale || 1;
@@ -128,6 +132,8 @@ export class IslandTransform {
         } else {
             const bounds = this.getIslandBounds(island);
             if (bounds && this.isPointInIsland(worldX, worldY, bounds)) {
+                // Save state before starting drag
+                this.mapEditor.undoManager.saveState('move island');
                 this.isDragging = true;
                 this.dragStartX = worldX;
                 this.dragStartY = worldY;

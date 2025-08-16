@@ -208,6 +208,12 @@ export class ToolManager {
             this.editor.selectedCircle && 
             this.editor.selectedIsland) {
             
+            // Save state on first drag (when dragging starts)
+            if (!this.isDraggingCircle) {
+                this.editor.undoManager.saveState('move collision circle');
+                this.isDraggingCircle = true;
+            }
+            
             // Drag selected circle
             const mouse = this.editor.mouse;
             this.editor.selectedCircle.x = mouse.worldX - this.editor.selectedIsland.x;
