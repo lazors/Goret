@@ -302,29 +302,38 @@ class CollisionManager {
         // Draw island collision circles
         this.map.islands.forEach(island => {
             if (island.collisionCircles && island.collisionCircles.length > 0) {
+                // Color palette for circles (matching map editor)
+                const colors = [
+                    'rgba(255, 0, 0, 0.4)', 
+                    'rgba(0, 255, 0, 0.4)',
+                    'rgba(0, 0, 255, 0.4)', 
+                    'rgba(255, 255, 0, 0.4)',
+                    'rgba(255, 0, 255, 0.4)'
+                ];
+                
                 // Draw each collision circle
                 island.collisionCircles.forEach((circle, index) => {
                     const worldX = island.x + circle.x;
                     const worldY = island.y + circle.y;
                     
-                    // Draw circle outline
-                    ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
+                    // Draw circle outline with color palette
+                    ctx.strokeStyle = colors[index % colors.length];
                     ctx.lineWidth = 2;
                     ctx.beginPath();
                     ctx.arc(worldX, worldY, circle.radius, 0, Math.PI * 2);
                     ctx.stroke();
                     
-                    // Draw circle center
-                    ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                    // Draw circle center with matching color
+                    ctx.fillStyle = colors[index % colors.length];
                     ctx.beginPath();
                     ctx.arc(worldX, worldY, 4, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Draw circle label
+                    // Draw circle label with radius info (matching map editor)
                     ctx.fillStyle = 'white';
                     ctx.font = '12px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText(`C${index}`, worldX, worldY - circle.radius - 5);
+                    ctx.fillText(`C${index} (r:${circle.radius})`, worldX, worldY - circle.radius - 5);
                 });
                 
                 // Draw island name

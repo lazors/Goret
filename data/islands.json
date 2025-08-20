@@ -12,16 +12,6 @@
         "x": 0,
         "y": 0,
         "radius": 280
-      },
-      {
-        "x": -160,
-        "y": -155,
-        "radius": 120
-      },
-      {
-        "x": 140,
-        "y": 145,
-        "radius": 100
       }
     ]
   },
@@ -33,12 +23,6 @@
     "scale": 1,
     "rotation": 0,
     "imageFilename": "Nevis.png",
-    "collisionCircles": [
-      {
-        "x": 362.27886129570106,
-        "y": 904.7460422729487,
-        "radius": 486
-      }
-    ]
+    "collisionCircles": []
   }
 ]
