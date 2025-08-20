@@ -315,8 +315,42 @@ export class RenderEngine {
         this.editor.islands.forEach(island => {
             if (island.collisionCircles && island.collisionCircles.length > 0) {
                 this.drawIslandCollisionCircles(island);
+            } else {
+                // Fallback: Draw single circle using island radius (matching game behavior)
+                this.drawIslandFallbackCollision(island);
             }
         });
+    }
+    
+    /**
+     * Draw fallback collision circle using island radius (when no collision circles defined)
+     * @private
+     * @param {Object} island - Island without collision circles
+     */
+    drawIslandFallbackCollision(island) {
+        const ctx = this.editor.ctx;
+        const zoom = this.editor.zoom;
+        
+        // Draw fallback circle using island radius (matching game behavior)
+        ctx.strokeStyle = 'rgba(255, 100, 100, 0.5)';
+        ctx.lineWidth = 2 / zoom;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.arc(island.x, island.y, island.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Draw center point
+        ctx.fillStyle = 'rgba(255, 100, 100, 0.8)';
+        ctx.beginPath();
+        ctx.arc(island.x, island.y, 4 / zoom, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw label indicating this is a fallback collision
+        ctx.fillStyle = 'white';
+        ctx.font = `${12 / zoom}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.fillText(`Fallback (r:${Math.round(island.radius)})`, island.x, island.y - island.radius - 10 / zoom);
     }
     
     /**

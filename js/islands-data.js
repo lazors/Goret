@@ -22,7 +22,13 @@ const ISLANDS_DATA = [
     "x": 2382.917579810254,
     "y": 2131.098680133246,
     "radius": 358.3069198510586,
-    "collisionCircles": [],
+    "collisionCircles": [
+      {
+        "x": 0,
+        "y": 0,
+        "radius": 280
+      }
+    ],
     "imageFilename": "Nevis.png"
   }
 ];
